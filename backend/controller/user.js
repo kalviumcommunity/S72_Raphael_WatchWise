@@ -42,6 +42,7 @@ const upload = multer({
     }
 }).single('image');
 
+// Auth Routes (mounted at /api/auth)
 authRouter.post("/register", (req, res) => {
     upload(req, res, async function (err) {
         if (err instanceof multer.MulterError) {
