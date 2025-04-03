@@ -196,7 +196,72 @@ router.get("/me", authMiddleware, async (req, res) => {
     }
 });
 
+router.put("/me", authMiddleware, (req, res) => {
+    upload(req, res, async function (err) {
+        if (err instanceof multer.MulterError) {
+            return res.status(400).json({ error: "File upload error: " + err.message });
+        } else if (err) {
+            return res.status(400).json({ error: err.message });
+        }
 
+        try {
+            const updateData = {
+                name: req.body.name,
+                email: req.body.email
+            };
+
+            if (req.file) {
+                // Delete old image if it exists
+                const user = await User.findById(req.user.id);
+                if (user.image && user.image.startsWith('uploads/')) {
+                    const oldImagePath = path.join(__dirname, '..', user.image);
+                    if (fs.existsSync(oldImagePath)) {
+                        fs.unlinkSync(oldImagePath);
+                    }
+                }
+                updateData.image = req.file.path;
+            }
+
+            const updatedUser = await User.findByIdAndUpdate(
+                req.user.id,
+                updateData,
+                { new: true }
+            ).select("-password");
+
+            if (!updatedUser) {
+                return res.status(404).json({ error: "User not found" });
+            }
+
+            res.json(updatedUser);
+        } catch (error) {
+            console.error("Profile update error:", error);
+            res.status(500).json({ error: "Server error" });
+        }
+    });
+});
+
+router.put("/me/stats", authMiddleware, async (req, res) => {
+    try {
+        const { movies, tvShows, anime } = req.body;
+        
+        let userStats = await UserStats.findOne({ userId: req.user.id });
+        if (!userStats) {
+            userStats = new UserStats({ userId: req.user.id });
+        }
+
+        if (movies) userStats.movies = { ...userStats.movies, ...movies };
+        if (tvShows) userStats.tvShows = { ...userStats.tvShows, ...tvShows };
+        if (anime) userStats.anime = { ...userStats.anime, ...anime };
+        
+        userStats.lastUpdated = Date.now();
+        await userStats.save();
+
+        res.json({ message: "Stats updated successfully", stats: userStats });
+    } catch (error) {
+        console.error("Stats update error:", error);
+        res.status(500).json({ error: "Server error" });
+    }
+});
 
 // ✅ DELETE: Delete current user's account (Protected)
 router.delete("/me", authMiddleware, async (req, res) => {
