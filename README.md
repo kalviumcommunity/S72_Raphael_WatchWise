@@ -85,3 +85,6 @@ Contributions are welcome! If you'd like to contribute:
 3. Make your changes and commit them.
 4. Push to your fork and submit a pull request.
 
+## Deployment
+WatchWise is now Live!!
+Check it out here - https://s72-raphael-watchwise.onrender.com
