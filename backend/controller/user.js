@@ -160,9 +160,6 @@ authRouter.post("/login", async (req, res) => {
         res.status(500).json({ error: "Server error" });
     }
 });
-router.get("/",(req, res) => {
-    res.send("Server is running");
-  });  
 // Profile Routes (mounted at /api/profile)
 router.get("/me", authMiddleware, async (req, res) => {
     try {

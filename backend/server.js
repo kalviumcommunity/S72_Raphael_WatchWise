@@ -32,7 +32,9 @@ app.use("/api/profile", user.router);
 app.use("/api/profile/movies", movie);
 app.use("/api/profile/tvshows", tvshow);
 app.use("/api/profile/anime", anime);
-
+app.get("/",(req, res) => {
+    res.send("Server is running");
+  });  
 app.listen(port, () => {
   console.log(`✅ Server is running on port ${port}`);
 });
