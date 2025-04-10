@@ -239,7 +239,28 @@ router.put("/me", authMiddleware, (req, res) => {
     });
 });
 
+router.put("/me/stats", authMiddleware, async (req, res) => {
+    try {
+        const { movies, tvShows, anime } = req.body;
+        
+        let userStats = await UserStats.findOne({ userId: req.user.id });
+        if (!userStats) {
+            userStats = new UserStats({ userId: req.user.id });
+        }
 
+        if (movies) userStats.movies = { ...userStats.movies, ...movies };
+        if (tvShows) userStats.tvShows = { ...userStats.tvShows, ...tvShows };
+        if (anime) userStats.anime = { ...userStats.anime, ...anime };
+        
+        userStats.lastUpdated = Date.now();
+        await userStats.save();
+
+        res.json({ message: "Stats updated successfully", stats: userStats });
+    } catch (error) {
+        console.error("Stats update error:", error);
+        res.status(500).json({ error: "Server error" });
+    }
+});
 
 // ✅ DELETE: Delete current user's account (Protected)
 router.delete("/me", authMiddleware, async (req, res) => {
