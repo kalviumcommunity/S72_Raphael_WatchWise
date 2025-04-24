@@ -240,7 +240,7 @@ const Profile = () => {
     const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
     const [editName, setEditName] = useState('');
     const [editEmail, setEditEmail] = useState('');
-  
+    const [editImage, setEditImage] = useState(null);
     const [currentPassword, setCurrentPassword] = useState('');
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
@@ -302,7 +302,12 @@ const Profile = () => {
         fetchUserProfile();
     }, [navigate]);
 
-    
+    const handleImageChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            setEditImage(file);
+        }
+    };
 
     const handleEditSubmit = async (e) => {
         e.preventDefault();
@@ -556,7 +561,7 @@ const Profile = () => {
                 setName={setEditName}
                 email={editEmail}
                 setEmail={setEditEmail}
-                
+                onImageChange={handleImageChange}
                 onPasswordClick={() => setIsPasswordModalOpen(true)}
                 onDeleteClick={() => setIsDeleteConfirmOpen(true)}
                 updateError={updateError}
