@@ -240,7 +240,7 @@ const Profile = () => {
     const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
     const [editName, setEditName] = useState('');
     const [editEmail, setEditEmail] = useState('');
-  
+    const [editImage, setEditImage] = useState(null);
     const [currentPassword, setCurrentPassword] = useState('');
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
@@ -302,7 +302,12 @@ const Profile = () => {
         fetchUserProfile();
     }, [navigate]);
 
-    
+    const handleImageChange = (e) => {
+        if (e.target.files && e.target.files[0]) {
+            console.log("Image selected:", e.target.files[0].name);
+            setEditImage(e.target.files[0]);
+        }
+    };
 
     const handleEditSubmit = async (e) => {
         e.preventDefault();
@@ -314,7 +319,15 @@ const Profile = () => {
             formData.append('name', editName);
             formData.append('email', editEmail);
             if (editImage) {
+                console.log("Appending image to form data:", editImage.name);
                 formData.append('image', editImage);
+            } else {
+                console.log("No image selected for upload");
+            }
+
+            // Log FormData entries (for debugging)
+            for (let pair of formData.entries()) {
+                console.log(pair[0] + ': ' + pair[1]);
             }
 
             await axios.put('https://s72-raphael-watchwise.onrender.com/api/profile/me', formData, {
@@ -326,6 +339,8 @@ const Profile = () => {
             
             await fetchUserProfile();
             setIsEditModalOpen(false);
+            // Reset the image state after successful update
+            setEditImage(null);
         } catch (err) {
             console.error('Profile update error:', err);
             setUpdateError(err.response?.data?.error || 'Failed to update profile');
@@ -397,7 +412,7 @@ const Profile = () => {
     };
 
     const getImageUrl = (imagePath) => {
-        if (!imagePath) return 'https://via.placeholder.com/150';
+        if (!imagePath) return 'https://upload.wikimedia.org/wikipedia/commons/9/99/Sample_User_Icon.png';
         if (imagePath.startsWith('http')) return imagePath;
         return `https://s72-raphael-watchwise.onrender.com/${imagePath}`;
     };
@@ -541,6 +556,13 @@ const Profile = () => {
                     </div>
                 </div>
 
+                {/* Stats Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    <StatCard title="Movies" stats={stats.movies} />
+                    <StatCard title="TV Shows" stats={stats.tvShows} />
+                    <StatCard title="Anime" stats={stats.anime} />
+                </div>
+
                 {/* Additional Stats or Recent Activity could go here */}
                 <div className="mt-8 bg-white rounded-lg shadow-md p-6">
                     <h2 className="text-2xl font-bold mb-4">Recent Activity</h2>
@@ -556,7 +578,7 @@ const Profile = () => {
                 setName={setEditName}
                 email={editEmail}
                 setEmail={setEditEmail}
-                
+                onImageChange={handleImageChange}
                 onPasswordClick={() => setIsPasswordModalOpen(true)}
                 onDeleteClick={() => setIsDeleteConfirmOpen(true)}
                 updateError={updateError}
