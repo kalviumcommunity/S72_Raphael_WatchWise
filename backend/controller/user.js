@@ -63,7 +63,22 @@ authRouter.post("/register", (req, res) => {
             if (!name || !email || !password) {
                 return res.status(400).json({ error: "Name, email, and password are required" });
             }
-
+            // Password complexity checks
+            if (password.length < 8) {
+                return res.status(400).json({ error: "Password must be at least 8 characters long" });
+            }
+            if (!/[a-z]/.test(password)) {
+                return res.status(400).json({ error: "Password must contain at least one lowercase letter" });
+            }
+            if (!/[A-Z]/.test(password)) {
+                return res.status(400).json({ error: "Password must contain at least one uppercase letter" });
+            }
+            if (!/[0-9]/.test(password)) {
+                return res.status(400).json({ error: "Password must contain at least one number" });
+            }
+            if (!/[^a-zA-Z0-9\s]/.test(password)) {
+                return res.status(400).json({ error: "Password must contain at least one symbol" });
+            }
             const existingUser = await User.findOne({ email });
             if (existingUser) {
                 return res.status(400).json({ error: "Email is already registered" });
@@ -160,6 +175,7 @@ authRouter.post("/login", async (req, res) => {
         res.status(500).json({ error: "Server error" });
     }
 });
+
 // Profile Routes (mounted at /api/profile)
 router.get("/me", authMiddleware, async (req, res) => {
     try {
@@ -204,14 +220,48 @@ router.put("/me", authMiddleware, (req, res) => {
         }
 
         try {
-            const updateData = {
-                name: req.body.name,
-                email: req.body.email
-            };
+            const { name, email, password } = req.body;
+            const userId = req.user.id;
+
+            const updateData = {};
+
+            if (name) {
+                updateData.name = name;
+            }
+            if (email) {
+                // Check if the new email is already in use by another user
+                const existingUserWithEmail = await User.findOne({ email });
+                if (existingUserWithEmail && existingUserWithEmail._id.toString() !== userId) {
+                    return res.status(400).json({ error: "Email is already in use by another user" });
+                }
+                updateData.email = email;
+            }
+
+            if (password) {
+                // Password complexity checks
+                if (password.length < 8) {
+                    return res.status(400).json({ error: "Password must be at least 8 characters long" });
+                }
+                if (!/[a-z]/.test(password)) {
+                    return res.status(400).json({ error: "Password must contain at least one lowercase letter" });
+                }
+                if (!/[A-Z]/.test(password)) {
+                    return res.status(400).json({ error: "Password must contain at least one uppercase letter" });
+                }
+                if (!/[0-9]/.test(password)) {
+                    return res.status(400).json({ error: "Password must contain at least one number" });
+                }
+                if (!/[^a-zA-Z0-9\s]/.test(password)) {
+                    return res.status(400).json({ error: "Password must contain at least one symbol" });
+                }
+                // Hash the new password
+                const hashedPassword = await bcrypt.hash(password, 10);
+                updateData.password = hashedPassword;
+            }
 
             if (req.file) {
                 // Delete old image if it exists
-                const user = await User.findById(req.user.id);
+                const user = await User.findById(userId);
                 if (user.image && user.image.startsWith('uploads/')) {
                     const oldImagePath = path.join(__dirname, '..', user.image);
                     if (fs.existsSync(oldImagePath)) {
@@ -222,7 +272,7 @@ router.put("/me", authMiddleware, (req, res) => {
             }
 
             const updatedUser = await User.findByIdAndUpdate(
-                req.user.id,
+                userId,
                 updateData,
                 { new: true }
             ).select("-password");
