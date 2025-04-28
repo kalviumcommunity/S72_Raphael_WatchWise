@@ -413,7 +413,14 @@ const Profile = () => {
 
     const getImageUrl = (imagePath) => {
         if (!imagePath) return 'https://upload.wikimedia.org/wikipedia/commons/9/99/Sample_User_Icon.png';
+    
+        if (typeof imagePath === 'object') {
+            // It's a File object
+            return URL.createObjectURL(imagePath);
+        }
+    
         if (imagePath.startsWith('http')) return imagePath;
+    
         return `https://s72-raphael-watchwise.onrender.com/${imagePath}`;
     };
 
@@ -526,11 +533,12 @@ const Profile = () => {
                         <div className="flex items-center space-x-6">
                             <img
                                 src={getImageUrl(user?.image)}
+                                
                                 alt="Profile"
                                 className="w-32 h-32 rounded-full object-cover"
                                 onError={(e) => {
                                     e.target.onerror = null;
-                                    e.target.src = 'https://via.placeholder.com/150';
+                                    e.target.src = 'https://upload.wikimedia.org/wikipedia/commons/9/99/Sample_User_Icon.png';
                                 }}
                             />
                             <div>
