@@ -12,20 +12,16 @@ const authMiddleware = require("../middleware/auth"); // Import auth middleware
 require("dotenv").config(); // Load environment variables
 
 // Configure multer for file upload
-const storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        const uploadDir = 'uploads/profile-images';
-        // Create directory if it doesn't exist
-        if (!fs.existsSync(uploadDir)) {
-            fs.mkdirSync(uploadDir, { recursive: true });
-        }
-        cb(null, uploadDir);
-    },
-    filename: function (req, file, cb) {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        cb(null, uniqueSuffix + path.extname(file.originalname));
-    }
-});
+const storage = multer.memoryStorage(); // Store in memory before saving to DB
+
+// Set file filter for images only
+const fileFilter = (req, file, cb) => {
+  if (file.mimetype.startsWith('image/')) {
+    cb(null, true);
+  } else {
+    cb(new Error('Only image files are allowed'), false);
+  }
+};
 
 const upload = multer({
     storage: storage,
@@ -211,6 +207,7 @@ router.get("/me", authMiddleware, async (req, res) => {
     }
 });
 
+// Update user profile route
 router.put("/me", authMiddleware, (req, res) => {
     upload(req, res, async function (err) {
         if (err instanceof multer.MulterError) {
@@ -260,15 +257,12 @@ router.put("/me", authMiddleware, (req, res) => {
             }
 
             if (req.file) {
-                // Delete old image if it exists
-                const user = await User.findById(userId);
-                if (user.image && user.image.startsWith('uploads/')) {
-                    const oldImagePath = path.join(__dirname, '..', user.image);
-                    if (fs.existsSync(oldImagePath)) {
-                        fs.unlinkSync(oldImagePath);
-                    }
-                }
-                updateData.image = req.file.path;
+                // Handle file upload - store in MongoDB as Buffer
+                updateData.image = {
+                    data: req.file.buffer,
+                    contentType: req.file.mimetype,
+                    filename: req.file.originalname
+                };
             }
 
             const updatedUser = await User.findByIdAndUpdate(
@@ -281,7 +275,17 @@ router.put("/me", authMiddleware, (req, res) => {
                 return res.status(404).json({ error: "User not found" });
             }
 
-            res.json(updatedUser);
+            // Don't send the buffer data directly in the response (it's too large)
+            const userResponse = updatedUser.toObject();
+            if (userResponse.image && userResponse.image.data) {
+                userResponse.image = {
+                    contentType: userResponse.image.contentType,
+                    filename: userResponse.image.filename,
+                    _id: userResponse.image._id
+                };
+            }
+
+            res.json(userResponse);
         } catch (error) {
             console.error("Profile update error:", error);
             res.status(500).json({ error: "Server error" });

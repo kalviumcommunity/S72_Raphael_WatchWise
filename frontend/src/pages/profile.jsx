@@ -276,6 +276,7 @@ const Profile = () => {
             });
 
             console.log("Profile response:", response.data);
+            console.log("Profile image path from server:", response.data.image);
             
             if (response.data) {
                 setUser(response.data);
@@ -412,16 +413,24 @@ const Profile = () => {
     };
 
     const getImageUrl = (imagePath) => {
+        // Default image if no path is provided
         if (!imagePath) return 'https://upload.wikimedia.org/wikipedia/commons/9/99/Sample_User_Icon.png';
-    
+        
+        // Handle File object (when user has just selected an image but not uploaded yet)
         if (typeof imagePath === 'object') {
-            // It's a File object
             return URL.createObjectURL(imagePath);
         }
-    
+        
+        // Handle full URLs (already including http/https)
         if (imagePath.startsWith('http')) return imagePath;
-    
-        return `https://s72-raphael-watchwise.onrender.com/${imagePath}`;
+        
+        // Convert backslashes to forward slashes for URLs
+        const normalizedPath = imagePath.replace(/\\/g, '/');
+        
+        // Handle relative paths from the server
+        // Make sure the path doesn't have any leading slashes that might cause issues
+        const cleanPath = normalizedPath.startsWith('/') ? normalizedPath.substring(1) : normalizedPath;
+        return `https://s72-raphael-watchwise.onrender.com/${cleanPath}`;
     };
 
     const updateStats = (mediaType, oldStatus, newStatus) => {
