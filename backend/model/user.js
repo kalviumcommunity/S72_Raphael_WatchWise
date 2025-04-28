@@ -162,7 +162,7 @@ const UserSchema = new mongoose.Schema({
         type: StatsSchema,
         default: () => ({})
     }
-});
+}});
 
 UserSchema.pre("save", async function (next) {
     if (!this.isModified("password")) return next(); // Skip if password hasn't changed
