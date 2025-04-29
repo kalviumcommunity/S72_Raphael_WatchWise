@@ -12,16 +12,20 @@ const authMiddleware = require("../middleware/auth"); // Import auth middleware
 require("dotenv").config(); // Load environment variables
 
 // Configure multer for file upload
-const storage = multer.memoryStorage(); // Store in memory before saving to DB
-
-// Set file filter for images only
-const fileFilter = (req, file, cb) => {
-  if (file.mimetype.startsWith('image/')) {
-    cb(null, true);
-  } else {
-    cb(new Error('Only image files are allowed'), false);
-  }
-};
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        const uploadDir = 'uploads/profile-images';
+        // Create directory if it doesn't exist
+        if (!fs.existsSync(uploadDir)) {
+            fs.mkdirSync(uploadDir, { recursive: true });
+        }
+        cb(null, uploadDir);
+    },
+    filename: function (req, file, cb) {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        cb(null, uniqueSuffix + path.extname(file.originalname));
+    }
+});
 
 const upload = multer({
     storage: storage,
@@ -49,8 +53,9 @@ authRouter.post("/register", (req, res) => {
 
         try {
             const { name, email, password } = req.body;
-            
+
             console.log("Registration request received:", { 
+                name,
                 email,
                 passwordLength: password?.length,
                 hasPassword: !!password
@@ -59,7 +64,18 @@ authRouter.post("/register", (req, res) => {
             if (!name || !email || !password) {
                 return res.status(400).json({ error: "Name, email, and password are required" });
             }
-            // Password complexity checks
+
+            if (typeof name !== 'string' || name.length < 3 || name.length > 16) {
+                return res.status(400).json({ error: "Name must be between 3 and 16 characters" });
+            }
+            if (!/^[a-zA-Z0-9_ ]+$/.test(name)) {
+                return res.status(400).json({ error: "Name can only contain letters, numbers, spaces, and underscores" });
+            }
+
+            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                return res.status(400).json({ error: "Invalid email format" });
+            }
+
             if (password.length < 8) {
                 return res.status(400).json({ error: "Password must be at least 8 characters long" });
             }
@@ -73,17 +89,18 @@ authRouter.post("/register", (req, res) => {
                 return res.status(400).json({ error: "Password must contain at least one number" });
             }
             if (!/[^a-zA-Z0-9\s]/.test(password)) {
-                return res.status(400).json({ error: "Password must contain at least one symbol" });
+                return res.status(400).json({ error: "Password must contain at least one special character" });
             }
+
             const existingUser = await User.findOne({ email });
             if (existingUser) {
                 return res.status(400).json({ error: "Email is already registered" });
             }
-            
+
             const userData = {
                 name,
                 email,
-                password // Let the model middleware handle password hashing
+                password
             };
 
             if (req.file) {
@@ -92,7 +109,7 @@ authRouter.post("/register", (req, res) => {
 
             const newUser = new User(userData);
             const savedUser = await newUser.save();
-            
+
             console.log("User registered:", {
                 email: savedUser.email,
                 hashedPasswordLength: savedUser.password?.length,
@@ -207,7 +224,6 @@ router.get("/me", authMiddleware, async (req, res) => {
     }
 });
 
-// Update user profile route
 router.put("/me", authMiddleware, (req, res) => {
     upload(req, res, async function (err) {
         if (err instanceof multer.MulterError) {
@@ -257,12 +273,15 @@ router.put("/me", authMiddleware, (req, res) => {
             }
 
             if (req.file) {
-                // Handle file upload - store in MongoDB as Buffer
-                updateData.image = {
-                    data: req.file.buffer,
-                    contentType: req.file.mimetype,
-                    filename: req.file.originalname
-                };
+                // Delete old image if it exists
+                const user = await User.findById(userId);
+                if (user.image && user.image.startsWith('uploads/')) {
+                    const oldImagePath = path.join(__dirname, '..', user.image);
+                    if (fs.existsSync(oldImagePath)) {
+                        fs.unlinkSync(oldImagePath);
+                    }
+                }
+                updateData.image = req.file.path;
             }
 
             const updatedUser = await User.findByIdAndUpdate(
@@ -275,17 +294,7 @@ router.put("/me", authMiddleware, (req, res) => {
                 return res.status(404).json({ error: "User not found" });
             }
 
-            // Don't send the buffer data directly in the response (it's too large)
-            const userResponse = updatedUser.toObject();
-            if (userResponse.image && userResponse.image.data) {
-                userResponse.image = {
-                    contentType: userResponse.image.contentType,
-                    filename: userResponse.image.filename,
-                    _id: userResponse.image._id
-                };
-            }
-
-            res.json(userResponse);
+            res.json(updatedUser);
         } catch (error) {
             console.error("Profile update error:", error);
             res.status(500).json({ error: "Server error" });

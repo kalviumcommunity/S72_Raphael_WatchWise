@@ -148,10 +148,10 @@ const UserSchema = new mongoose.Schema({
         required: true,
     },
     image: {
-        data: Buffer,
-        contentType: String,
-        filename: String,
-        createdAt: {
+        type: String,
+        default: 'https://thumbs.dreamstime.com/b/default-avatar-profile-icon-vector-social-media-user-image-182145777.jpg'
+    },
+    createdAt: {
         type: Date,
         default: Date.now
     },
@@ -162,7 +162,7 @@ const UserSchema = new mongoose.Schema({
         type: StatsSchema,
         default: () => ({})
     }
-}});
+});
 
 UserSchema.pre("save", async function (next) {
     if (!this.isModified("password")) return next(); // Skip if password hasn't changed

@@ -6,6 +6,7 @@ import './index.css'
 import Login from "./pages/login";
 import Signup from "./pages/signup";
 import Profile from "./pages/profile";
+import Home from "./pages/home";
 
 function App(){
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -17,6 +18,7 @@ function App(){
         <Route path="/login" element={<Login setIsAuthenticated={setIsAuthenticated} />} />
         <Route path="/signup" element={<Signup />} />
         <Route path="/profile" element={<Profile />} />
+        <Route path="/home" element={<Home />} />
       </Routes>
     </Router>
   </SearchProvider>

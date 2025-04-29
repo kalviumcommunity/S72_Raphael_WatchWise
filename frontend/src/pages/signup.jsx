@@ -18,9 +18,8 @@ function Signup({ setIsAuthenticated }) {
             setError('Name is required');
             return;
         }
-
         try {
-            const response = await axios.post('https://s72-raphael-watchwise.onrender.com/api/auth/register', {
+            const response = await axios.post('http://localhost:3000/api/auth/register', {
                 name,
                 email,
                 password
@@ -30,7 +29,7 @@ function Signup({ setIsAuthenticated }) {
             setIsAuthenticated(true);
             navigate('/home');
         } catch (error) {
-            setError(error.response?.data?.error || 'An error occurred during registration');
+            setError(error.response?.data?.error);
         }
     };
 
