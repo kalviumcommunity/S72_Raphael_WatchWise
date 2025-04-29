@@ -294,7 +294,7 @@ const Profile = () => {
 
             // console.log("Fetching profile with token:", token.substring(0, 10) + '...');
             
-            const response = await axios.get('http://localhost:3000/api/profile/me', {
+            const response = await axios.get('https://s72-raphael-watchwise.onrender.com/api/profile/me', {
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
@@ -373,7 +373,7 @@ const Profile = () => {
             //     console.log(pair[0] + ': ' + pair[1]);
             // }
 
-            const response = await axios.put('http://localhost:3000/api/profile/me', formData, {
+            const response = await axios.put('https://s72-raphael-watchwise.onrender.com/api/profile/me', formData, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'multipart/form-data'
@@ -413,7 +413,7 @@ const Profile = () => {
 
         try {
             const token = localStorage.getItem('token');
-            await axios.put('http://localhost:3000/api/profile/me/password', {
+            await axios.put('https://s72-raphael-watchwise.onrender.com/api/profile/me/password', {
                 currentPassword: currentPassword,
                 newPassword: newPassword
             }, {
@@ -440,7 +440,7 @@ const Profile = () => {
     const handleDeleteAccount = async () => {
         try {
             const token = localStorage.getItem('token');
-            await axios.delete('http://localhost:3000/api/profile/me', {
+            await axios.delete('https://s72-raphael-watchwise.onrender.com/api/profile/me', {
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
@@ -474,7 +474,7 @@ const Profile = () => {
         
         // Normalize path by replacing backslashes with forward slashes
         const normalizedPath = imagePath.replace(/\\/g, '/');
-        return `http://localhost:3000/${normalizedPath}`;
+        return `https://s72-raphael-watchwise.onrender.com/${normalizedPath}`;
     };
 
     const updateStats = (mediaType, oldStatus, newStatus) => {
@@ -531,7 +531,7 @@ const Profile = () => {
         const fetchStats = async () => {
             try {
                 const token = localStorage.getItem('token');
-                const response = await axios.get('http://localhost:3000/api/profile/me', {
+                const response = await axios.get('https://s72-raphael-watchwise.onrender.com/api/profile/me', {
                     headers: {
                         'Authorization': `Bearer ${token}`,
                         'Content-Type': 'application/json'
