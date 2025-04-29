@@ -7,7 +7,6 @@ import Navbar from '../components/navbar';
 const Login = ({ setIsAuthenticated }) => {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
-    //hi form the other user form other planet
     const [error, setError] = useState("");
     const [isLoading, setIsLoading] = useState(false);
     const navigate = useNavigate();
@@ -18,7 +17,7 @@ const Login = ({ setIsAuthenticated }) => {
         setIsLoading(true);
 
         try {
-            const response = await axios.post("https://s72-raphael-watchwise.onrender.com/api/auth/login", {
+            const response = await axios.post("http://localhost:3000/api/auth/login", {
                 email,
                 password
             });

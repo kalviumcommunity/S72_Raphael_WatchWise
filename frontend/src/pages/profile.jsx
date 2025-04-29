@@ -63,7 +63,8 @@ const PasswordModal = ({
     setNewPassword,
     confirmPassword,
     setConfirmPassword,
-    passwordError
+    passwordError,
+    isSubmitting
 }) => {
     if (!isOpen) return null;
     
@@ -81,7 +82,7 @@ const PasswordModal = ({
                 </div>
                 
                 {passwordError && (
-                    <div className="mb-4 text-red-500">{passwordError}</div>
+                    <div className="mb-4 p-3 bg-red-100 text-red-700 rounded">{passwordError}</div>
                 )}
                 
                 <form onSubmit={onSubmit} className="space-y-4">
@@ -93,6 +94,7 @@ const PasswordModal = ({
                         onChange={(e) => setCurrentPassword(e.target.value)}
                         required
                         margin="normal"
+                        disabled={isSubmitting}
                     />
                     <TextField
                         fullWidth
@@ -102,6 +104,8 @@ const PasswordModal = ({
                         onChange={(e) => setNewPassword(e.target.value)}
                         required
                         margin="normal"
+                        disabled={isSubmitting}
+                        helperText="Password must be at least 6 characters"
                     />
                     <TextField
                         fullWidth
@@ -111,12 +115,16 @@ const PasswordModal = ({
                         onChange={(e) => setConfirmPassword(e.target.value)}
                         required
                         margin="normal"
+                        disabled={isSubmitting}
+                        error={confirmPassword !== newPassword && confirmPassword !== ''}
+                        helperText={confirmPassword !== newPassword && confirmPassword !== '' ? "Passwords don't match" : ""}
                     />
                     <button
                         type="submit"
-                        className="w-full bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+                        disabled={isSubmitting}
+                        className="w-full bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:bg-blue-300"
                     >
-                        Update Password
+                        {isSubmitting ? 'Updating...' : 'Update Password'}
                     </button>
                 </form>
             </div>
@@ -133,9 +141,11 @@ const EditModal = ({
     email,
     setEmail,
     onImageChange,
+    imagePreview,
     onPasswordClick,
     onDeleteClick,
-    updateError 
+    updateError,
+    isUploading
 }) => {
     if (!isOpen) return null;
 
@@ -153,7 +163,7 @@ const EditModal = ({
                 </div>
                 
                 {updateError && (
-                    <div className="mb-4 text-red-500">{updateError}</div>
+                    <div className="mb-4 p-3 bg-red-100 text-red-700 rounded">{updateError}</div>
                 )}
                 
                 <form onSubmit={onSubmit} className="space-y-4">
@@ -164,6 +174,7 @@ const EditModal = ({
                         onChange={(e) => setName(e.target.value)}
                         required
                         margin="normal"
+                        disabled={isUploading}
                     />
                     <TextField
                         fullWidth
@@ -173,38 +184,53 @@ const EditModal = ({
                         onChange={(e) => setEmail(e.target.value)}
                         required
                         margin="normal"
+                        disabled={isUploading}
                     />
                     <div>
                         <label className="block text-gray-700 mb-2">Profile Image</label>
+                        {imagePreview && (
+                            <div className="mb-2">
+                                <img 
+                                    src={imagePreview} 
+                                    alt="Profile Preview" 
+                                    className="w-24 h-24 rounded-full object-cover"
+                                />
+                            </div>
+                        )}
                         <input
                             type="file"
                             accept="image/*"
                             onChange={onImageChange}
                             className="w-full p-2 border rounded"
+                            disabled={isUploading}
                         />
+                        <p className="text-xs text-gray-500 mt-1">Maximum file size: 5MB</p>
                     </div>
                     <div className="flex justify-between pt-4">
                         <div>
                             <button
                                 type="button"
                                 onClick={onPasswordClick}
-                                className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 mr-2"
+                                className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 mr-2 disabled:bg-blue-300"
+                                disabled={isUploading}
                             >
                                 Change Password
                             </button>
                             <button
                                 type="button"
                                 onClick={onDeleteClick}
-                                className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
+                                className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 disabled:bg-red-300"
+                                disabled={isUploading}
                             >
                                 Delete Account
                             </button>
                         </div>
                         <button
                             type="submit"
-                            className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
+                            className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 disabled:bg-green-300"
+                            disabled={isUploading}
                         >
-                            Save Changes
+                            {isUploading ? 'Saving...' : 'Save Changes'}
                         </button>
                     </div>
                 </form>
@@ -216,7 +242,6 @@ const EditModal = ({
 const Profile = () => {
     const navigate = useNavigate();
     const [user, setUser] = useState(null);
-    //eslint-disable-next-line
     const [stats, setStats] = useState({
         movies: {
             watched: 0,
@@ -241,14 +266,15 @@ const Profile = () => {
     const [editName, setEditName] = useState('');
     const [editEmail, setEditEmail] = useState('');
     const [editImage, setEditImage] = useState(null);
+    const [imagePreview, setImagePreview] = useState(null);
     const [currentPassword, setCurrentPassword] = useState('');
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [updateError, setUpdateError] = useState('');
     const [passwordError, setPasswordError] = useState('');
     const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
-    //eslint-disable-next-line
-    const [showPasswordChange, setShowPasswordChange] = useState(false);
+    const [isUploading, setIsUploading] = useState(false);
+    const [isSubmittingPassword, setIsSubmittingPassword] = useState(false);
 
     useEffect(() => {
         if (user) {
@@ -266,17 +292,16 @@ const Profile = () => {
                 return;
             }
 
-            console.log("Fetching profile with token:", token.substring(0, 10) + '...');
+            // console.log("Fetching profile with token:", token.substring(0, 10) + '...');
             
-            const response = await axios.get('https://s72-raphael-watchwise.onrender.com/api/profile/me', {
+            const response = await axios.get('http://localhost:3000/api/profile/me', {
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 }
             });
 
-            console.log("Profile response:", response.data);
-            console.log("Profile image path from server:", response.data.image);
+            // console.log("Profile response:", response.data);
             
             if (response.data) {
                 setUser(response.data);
@@ -305,61 +330,90 @@ const Profile = () => {
 
     const handleImageChange = (e) => {
         if (e.target.files && e.target.files[0]) {
-            console.log("Image selected:", e.target.files[0].name);
-            setEditImage(e.target.files[0]);
+            const file = e.target.files[0];
+            
+            // Check file size (5MB limit)
+            if (file.size > 5 * 1024 * 1024) {
+                setUpdateError('Image file is too large. Maximum size is 5MB.');
+                return;
+            }
+            
+            // console.log("Image selected:", file.name);
+            setEditImage(file);
+            
+            // Create preview
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setImagePreview(reader.result);
+            };
+            reader.readAsDataURL(file);
         }
     };
 
     const handleEditSubmit = async (e) => {
         e.preventDefault();
         setUpdateError('');
+        setIsUploading(true);
         
         try {
             const token = localStorage.getItem('token');
             const formData = new FormData();
             formData.append('name', editName);
             formData.append('email', editEmail);
+            
             if (editImage) {
-                console.log("Appending image to form data:", editImage.name);
+                // console.log("Appending image to form data:", editImage.name);
                 formData.append('image', editImage);
             } else {
                 console.log("No image selected for upload");
             }
 
             // Log FormData entries (for debugging)
-            for (let pair of formData.entries()) {
-                console.log(pair[0] + ': ' + pair[1]);
-            }
+            // for (let pair of formData.entries()) {
+            //     console.log(pair[0] + ': ' + pair[1]);
+            // }
 
-            await axios.put('https://s72-raphael-watchwise.onrender.com/api/profile/me', formData, {
+            const response = await axios.put('http://localhost:3000/api/profile/me', formData, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'multipart/form-data'
                 }
             });
             
+            // console.log("Profile update response:", response.data);
             await fetchUserProfile();
             setIsEditModalOpen(false);
             // Reset the image state after successful update
             setEditImage(null);
+            setImagePreview(null);
         } catch (err) {
             console.error('Profile update error:', err);
             setUpdateError(err.response?.data?.error || 'Failed to update profile');
+        } finally {
+            setIsUploading(false);
         }
     };
 
     const handlePasswordChange = async (e) => {
         e.preventDefault();
         setPasswordError('');
+        setIsSubmittingPassword(true);
 
         if (newPassword !== confirmPassword) {
             setPasswordError('New passwords do not match');
+            setIsSubmittingPassword(false);
+            return;
+        }
+
+        if (newPassword.length < 6) {
+            setPasswordError('Password must be at least 6 characters');
+            setIsSubmittingPassword(false);
             return;
         }
 
         try {
             const token = localStorage.getItem('token');
-            await axios.put('https://s72-raphael-watchwise.onrender.com/api/profile/me/password', {
+            await axios.put('http://localhost:3000/api/profile/me/password', {
                 currentPassword: currentPassword,
                 newPassword: newPassword
             }, {
@@ -378,13 +432,15 @@ const Profile = () => {
         } catch (err) {
             console.error('Password update error:', err);
             setPasswordError(err.response?.data?.error || 'Failed to update password');
+        } finally {
+            setIsSubmittingPassword(false);
         }
     };
 
     const handleDeleteAccount = async () => {
         try {
             const token = localStorage.getItem('token');
-            await axios.delete('https://s72-raphael-watchwise.onrender.com/api/profile/me', {
+            await axios.delete('http://localhost:3000/api/profile/me', {
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
@@ -413,24 +469,12 @@ const Profile = () => {
     };
 
     const getImageUrl = (imagePath) => {
-        // Default image if no path is provided
         if (!imagePath) return 'https://upload.wikimedia.org/wikipedia/commons/9/99/Sample_User_Icon.png';
-        
-        // Handle File object (when user has just selected an image but not uploaded yet)
-        if (typeof imagePath === 'object') {
-            return URL.createObjectURL(imagePath);
-        }
-        
-        // Handle full URLs (already including http/https)
         if (imagePath.startsWith('http')) return imagePath;
         
-        // Convert backslashes to forward slashes for URLs
+        // Normalize path by replacing backslashes with forward slashes
         const normalizedPath = imagePath.replace(/\\/g, '/');
-        
-        // Handle relative paths from the server
-        // Make sure the path doesn't have any leading slashes that might cause issues
-        const cleanPath = normalizedPath.startsWith('/') ? normalizedPath.substring(1) : normalizedPath;
-        return `https://s72-raphael-watchwise.onrender.com/${cleanPath}`;
+        return `http://localhost:3000/${normalizedPath}`;
     };
 
     const updateStats = (mediaType, oldStatus, newStatus) => {
@@ -487,7 +531,7 @@ const Profile = () => {
         const fetchStats = async () => {
             try {
                 const token = localStorage.getItem('token');
-                const response = await axios.get('https://s72-raphael-watchwise.onrender.com/api/profile/me', {
+                const response = await axios.get('http://localhost:3000/api/profile/me', {
                     headers: {
                         'Authorization': `Bearer ${token}`,
                         'Content-Type': 'application/json'
@@ -526,7 +570,7 @@ const Profile = () => {
             <div className="min-h-screen bg-gray-100">
                 <Navbar />
                 <div className="flex items-center justify-center h-screen">
-                    <div className="text-red-500">{error}</div>
+                    <div className="bg-red-100 text-red-700 p-4 rounded">{error}</div>
                 </div>
             </div>
         );
@@ -542,9 +586,8 @@ const Profile = () => {
                         <div className="flex items-center space-x-6">
                             <img
                                 src={getImageUrl(user?.image)}
-                                
                                 alt="Profile"
-                                className="w-32 h-32 rounded-full object-cover"
+                                className="w-32 h-32 rounded-full object-cover border-2 border-gray-200"
                                 onError={(e) => {
                                     e.target.onerror = null;
                                     e.target.src = 'https://upload.wikimedia.org/wikipedia/commons/9/99/Sample_User_Icon.png';
@@ -559,13 +602,13 @@ const Profile = () => {
                         <div className="flex gap-3">
                             <button
                                 onClick={() => setIsEditModalOpen(true)}
-                                className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+                                className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition duration-200"
                             >
                                 Edit Profile
                             </button>
                             <button
                                 onClick={handleSignOut}
-                                className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
+                                className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition duration-200"
                             >
                                 Sign Out
                             </button>
@@ -596,9 +639,11 @@ const Profile = () => {
                 email={editEmail}
                 setEmail={setEditEmail}
                 onImageChange={handleImageChange}
+                imagePreview={imagePreview}
                 onPasswordClick={() => setIsPasswordModalOpen(true)}
                 onDeleteClick={() => setIsDeleteConfirmOpen(true)}
                 updateError={updateError}
+                isUploading={isUploading}
             />
             <PasswordModal 
                 isOpen={isPasswordModalOpen}
@@ -611,6 +656,7 @@ const Profile = () => {
                 confirmPassword={confirmPassword}
                 setConfirmPassword={setConfirmPassword}
                 passwordError={passwordError}
+                isSubmitting={isSubmittingPassword}
             />
             <DeleteConfirmationModal 
                 isOpen={isDeleteConfirmOpen}
