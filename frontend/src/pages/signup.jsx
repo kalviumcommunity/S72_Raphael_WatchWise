@@ -19,7 +19,7 @@ function Signup({ setIsAuthenticated }) {
             return;
         }
         try {
-            const response = await axios.post('http://localhost:3000/api/auth/register', {
+            const response = await axios.post('https://s72-raphael-watchwise.onrender.com/api/auth/register', {
                 name,
                 email,
                 password
