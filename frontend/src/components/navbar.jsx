@@ -347,61 +347,72 @@ const Navbar = () => {
           </div>
 
           {/* Menu Items */}
-          <ul className="hidden md:flex space-x-6">
-            <li>
-              <button 
-                onClick={() => navigate("/home")} 
-                className="text-black hover:text-gray-600 transition focus:outline-none"
-              >
-                Home
-              </button>
-            </li>
-            <li>
-              <button 
-                onClick={() => navigate("/recommendations")} 
-                className="text-black hover:text-gray-600 transition focus:outline-none"
-              >
-                Recommendations
-              </button>
-            </li>
-            <li ref={genreRef} className="relative">
-              <button 
-                onClick={() => setShowGenres(!showGenres)}
-                className="text-black hover:text-gray-600 transition focus:outline-none flex items-center"
-              >
-                Genres
-                <svg 
-                  className={`w-4 h-4 ml-1 transform transition-transform ${showGenres ? 'rotate-180' : ''}`} 
-                  fill="none" 
-                  stroke="currentColor" 
-                  viewBox="0 0 24 24"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
-              {showGenres && (
-                <div className="absolute top-full left-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
-                  {genres.map(genre => (
-                    <button
-                      key={genre.id}
-                      onClick={() => handleGenreClick(genre.id)}
-                      className="w-full px-4 py-2 text-left hover:bg-gray-100 transition-colors"
-                    >
-                      {genre.name}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </li>
-            <li>
-              <button 
-                onClick={handleAuthClick} 
-                className="text-black hover:text-gray-600 transition focus:outline-none"
-              >
-                {isAuthenticated ? 'Profile' : 'Sign Up'}
-              </button>
-            </li>
-          </ul>
+<ul className="hidden md:flex space-x-8 items-center">
+  <li>
+    <button 
+      onClick={() => navigate("/home")} 
+      className="text-gray-700 hover:text-blue-600 font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-200 focus:ring-opacity-50 rounded-lg px-3 py-2 hover:bg-blue-50 transform hover:scale-105"
+    >
+      Home
+    </button>
+  </li>
+  <li>
+    <button 
+      onClick={() => navigate("/recommendations")} 
+      className="text-gray-700 hover:text-blue-600 font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-200 focus:ring-opacity-50 rounded-lg px-3 py-2 hover:bg-blue-50 transform hover:scale-105"
+    >
+      Recommendations
+    </button>
+  </li>
+  <li ref={genreRef} className="relative">
+    <button 
+      onClick={() => setShowGenres(!showGenres)}
+      className="text-gray-700 hover:text-blue-600 font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-200 focus:ring-opacity-50 rounded-lg px-3 py-2 hover:bg-blue-50 transform hover:scale-105 flex items-center group"
+    >
+      Genres
+      <svg 
+        className={`w-4 h-4 ml-2 transform transition-all duration-300 group-hover:text-blue-600 ${showGenres ? 'rotate-180' : ''}`} 
+        fill="none" 
+        stroke="currentColor" 
+        viewBox="0 0 24 24"
+      >
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+      </svg>
+    </button>
+    {showGenres && (
+      <div className="absolute top-full left-0 mt-3 w-56 bg-white rounded-xl shadow-2xl border border-gray-100 py-3 z-50 transform transition-all duration-200 opacity-100 scale-100">
+        <div className="max-h-64 overflow-y-auto">
+          {genres.map((genre, index) => (
+            <button
+              key={genre.id}
+              onClick={() => handleGenreClick(genre.id)}
+              className="w-full px-5 py-3 text-left text-gray-700 hover:text-blue-600 hover:bg-blue-50 transition-all duration-200 font-medium border-l-4 border-transparent hover:border-blue-400 transform hover:translate-x-1"
+              style={{
+                animationDelay: `${index * 50}ms`
+              }}
+            >
+              {genre.name}
+            </button>
+          ))}
+        </div>
+        {/* Dropdown Arrow */}
+        <div className="absolute -top-2 left-6 w-4 h-4 bg-white border-l border-t border-gray-100 transform rotate-45"></div>
+      </div>
+    )}
+  </li>
+  <li>
+    <button 
+      onClick={handleAuthClick} 
+      className={`font-semibold transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-opacity-50 rounded-lg px-6 py-2 transform hover:scale-105 shadow-md hover:shadow-lg ${
+        isAuthenticated 
+          ? 'text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 focus:ring-blue-200 border-2 border-blue-200 hover:border-blue-300' 
+          : 'text-white bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 focus:ring-blue-300'
+      }`}
+    >
+      {isAuthenticated ? 'Profile' : 'Sign Up'}
+    </button>
+  </li>
+</ul>
 
           {/* Mobile Menu Button */}
           <button className="md:hidden text-black focus:outline-none">

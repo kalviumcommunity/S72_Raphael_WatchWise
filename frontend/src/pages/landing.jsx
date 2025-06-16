@@ -242,7 +242,7 @@ const Landing = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-gray-200">
       <Navbar />
       
       <div className="container mx-auto px-4 pt-24 pb-12">
