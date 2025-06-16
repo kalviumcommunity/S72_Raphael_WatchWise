@@ -26,6 +26,27 @@ router.get('/:movieId', auth, async (req, res) => {
 
 // Update movie status
 router.put('/:movieId', auth, async (req, res) => {
+    if (watchStatus === 'notPlanning') {
+    // Remove movie from history if it exists
+    const movieIndex = user.movies.findIndex(m => String(m.movieId) === String(movieId));
+    if (movieIndex > -1) {
+        user.movies.splice(movieIndex, 1); // remove it
+    }
+
+    // Also remove from stats if needed (recalculate)
+    user.stats.movies = { watched: 0, inProgress: 0, planToWatch: 0 };
+    user.movies.forEach(movie => {
+        if (movie.watchStatus === 'watched') user.stats.movies.watched++;
+        else if (movie.watchStatus === 'inProgress') user.stats.movies.inProgress++;
+        else if (movie.watchStatus === 'planToWatch') user.stats.movies.planToWatch++;
+    });
+
+    await user.save();
+    return res.json({
+        message: 'Movie not stored (watchStatus: notPlanning). Removed if existed.',
+        stats: user.stats
+    });
+}
     try {
         console.log('Received update request:', {
             body: req.body,
