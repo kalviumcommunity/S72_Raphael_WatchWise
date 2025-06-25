@@ -33,5 +33,5 @@ app.use("/api/profile/tvshows", tvshow);
 app.use("/api/profile/anime", anime);
 
 app.listen(port, () => {
-  console.log(`✅ Server is running on port ${port}`);
+  console.log(`✅ Server is running at http://localhost:${port}`);
 });

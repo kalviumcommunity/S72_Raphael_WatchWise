@@ -19,7 +19,7 @@ router.get('/:movieId', auth, async (req, res) => {
         if (!movieStatus) {
             return res.status(404).json({ error: 'Movie status not found' });
         }
-
+        
         res.json(movieStatus);
     } catch (error) {
         console.error('Error fetching movie status:', error);
@@ -29,6 +29,7 @@ router.get('/:movieId', auth, async (req, res) => {
 
 // Update movie status
 router.put('/:movieId', auth, async (req, res) => {
+    const { watchStatus, rating, movieTitle, posterPath } = req.body;
     if (watchStatus === 'notPlanning') {
     // Remove movie from history if it exists
     const movieIndex = user.movies.findIndex(m => String(m.movieId) === String(movieId));
@@ -57,7 +58,6 @@ router.put('/:movieId', auth, async (req, res) => {
             user: req.user
         });
 
-        const { watchStatus, rating, movieTitle, posterPath } = req.body;
         const movieId = req.params.movieId;
 
         // Input validation
