@@ -17,7 +17,17 @@ mongoose
   .catch((err) => console.error("❌ MongoDB connection error:", err));
 
 app.use(express.json());
-app.use(cors());
+const allowedOrigins = ['http://localhost:3000', 'https://watchwisely.netlify.app'];
+app.use(cors({
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true
+}));
 
 const user = require("./controller/user");
 const movie = require("./controller/movie");
