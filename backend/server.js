@@ -17,7 +17,7 @@ mongoose
   .catch((err) => console.error("❌ MongoDB connection error:", err));
 
 app.use(express.json());
-const allowedOrigins = ['http://localhost:3000', 'https://watchwisely.netlify.app'];
+const allowedOrigins = ['http://localhost:5173', 'https://watchwisely.netlify.app'];
 app.use(cors({
   origin: function (origin, callback) {
     if (!origin || allowedOrigins.includes(origin)) {
