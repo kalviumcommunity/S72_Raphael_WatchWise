@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import Landing from "./pages/landing";
 import { SearchProvider } from './context/SearchContext'
+import { AuthProvider } from './context/AuthContext';
 import './index.css'
 import Login from "./pages/login";
 import Signup from "./pages/signup";
@@ -16,6 +17,7 @@ import Recommendations from './pages/recommendations';
 function App(){
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   return(
+<AuthProvider>
   <SearchProvider>
     <Router>
       <Routes>
@@ -32,6 +34,7 @@ function App(){
       </Routes>
     </Router>
   </SearchProvider>
+</AuthProvider>
   )
 }
 

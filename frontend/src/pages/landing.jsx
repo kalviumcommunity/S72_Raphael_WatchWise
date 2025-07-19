@@ -1,10 +1,12 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import MovieCard from '../components/Moviecard';
 import TvShowCard from '../components/Tvshowcard';
 import AnimeCard from '../components/Animecard';
 import Navbar from '../components/navbar';
 import { useSearch } from '../context/SearchContext';
+import { useAuth } from '../context/AuthContext'; // Import your auth context
 
 const API_KEY = "0ace2af581de1152e9f38a6c477220b8";
 const POPULAR_MOVIES_URL = `https://api.themoviedb.org/3/movie/popular?api_key=${API_KEY}`;
@@ -15,6 +17,8 @@ const SEARCH_TV_URL = `https://api.themoviedb.org/3/search/tv?api_key=${API_KEY}
 const SEARCH_ANIME_URL = "https://api.jikan.moe/v4/anime";
 
 const Landing = () => {
+  const navigate = useNavigate();
+  const { user, isAuthenticated, loading: authLoading } = useAuth(); // Get auth state
   const { searchState, updateSearchState, clearSearch } = useSearch();
   const [movies, setMovies] = useState([]);
   const [tvShows, setTvShows] = useState([]);
@@ -27,11 +31,76 @@ const Landing = () => {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [scrollRestored, setScrollRestored] = useState(false);
   
   // Observer for infinite scrolling
   const observer = useRef();
   // Last element ref for intersection observer
   const lastElementRef = useRef(null);
+
+  // Save scroll position when component unmounts or user navigates away
+  useEffect(() => {
+    const saveScrollPosition = () => {
+      const scrollPosition = window.scrollY;
+      sessionStorage.setItem('landingScrollPosition', scrollPosition.toString());
+    };
+
+    // Save scroll position on beforeunload and visibilitychange
+    const handleBeforeUnload = () => saveScrollPosition();
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        saveScrollPosition();
+      }
+    };
+
+    // Also save periodically while scrolling (throttled)
+    let scrollTimeout;
+    const handleScroll = () => {
+      clearTimeout(scrollTimeout);
+      scrollTimeout = setTimeout(() => {
+        saveScrollPosition();
+      }, 100); // Throttle to every 100ms
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('scroll', handleScroll);
+
+    return () => {
+      saveScrollPosition(); // Save on component unmount
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('scroll', handleScroll);
+      clearTimeout(scrollTimeout);
+    };
+  }, []);
+
+  // Restore scroll position after content loads
+  useEffect(() => {
+    if (!loading && !scrollRestored && (movies.length > 0 || tvShows.length > 0 || anime.length > 0)) {
+      const savedScrollPosition = sessionStorage.getItem('landingScrollPosition');
+      if (savedScrollPosition) {
+        // Use requestAnimationFrame to ensure DOM is ready
+        requestAnimationFrame(() => {
+          window.scrollTo(0, parseInt(savedScrollPosition, 10));
+          setScrollRestored(true);
+        });
+      } else {
+        setScrollRestored(true);
+      }
+    }
+  }, [loading, movies.length, tvShows.length, anime.length, scrollRestored]);
+
+  // Authentication check
+  useEffect(() => {
+    if (!authLoading) {
+      if (!isAuthenticated) {
+        // Redirect to login page if not authenticated
+        navigate('/login', { replace: true });
+        return;
+      }
+    }
+  }, [isAuthenticated, authLoading, navigate]);
 
   // Save active tab to localStorage
   useEffect(() => {
@@ -40,22 +109,25 @@ const Landing = () => {
 
   // Initial content load
   useEffect(() => {
-    const loadInitialContent = async () => {
-      if (searchState.results) {
-        // If we have search results, use them
-        setMovies(searchState.results.movies || []);
-        setTvShows(searchState.results.tvShows || []);
-        setAnime(searchState.results.anime || []);
-        setPage(searchState.page || 1);
-        setLoading(false);
-      } else {
-        // Otherwise load popular content
-        await fetchPopularContent(1, true);
-      }
-    };
+    // Only load content if user is authenticated
+    if (!authLoading && isAuthenticated) {
+      const loadInitialContent = async () => {
+        if (searchState.results) {
+          // If we have search results, use them
+          setMovies(searchState.results.movies || []);
+          setTvShows(searchState.results.tvShows || []);
+          setAnime(searchState.results.anime || []);
+          setPage(searchState.page || 1);
+          setLoading(false);
+        } else {
+          // Otherwise load popular content
+          await fetchPopularContent(1, true);
+        }
+      };
 
-    loadInitialContent();
-  }, [searchState.results]);
+      loadInitialContent();
+    }
+  }, [searchState.results, isAuthenticated, authLoading]);
 
   const fetchPopularContent = async (pageNum, isInitial = false) => {
     if (isInitial) {
@@ -177,12 +249,19 @@ const Landing = () => {
     setLoading(true);
     clearSearch();
     await fetchPopularContent(1, true);
+    // Clear saved scroll position when showing popular content
+    sessionStorage.removeItem('landingScrollPosition');
+    setScrollRestored(false);
     // Reset to page 1
     window.scrollTo(0, 0);
   };
 
   const handleTabChange = (tab) => {
     setActiveTab(tab);
+    // Clear scroll position when changing tabs so user starts at top
+    sessionStorage.removeItem('landingScrollPosition');
+    setScrollRestored(false);
+    window.scrollTo(0, 0);
   };
 
   const renderContent = () => {
@@ -240,6 +319,20 @@ const Landing = () => {
       </div>
     );
   };
+
+  // Show loading spinner while checking authentication
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gray-200 flex justify-center items-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-4 border-red-500 border-t-transparent"></div>
+      </div>
+    );
+  }
+
+  // Don't render the page content if user is not authenticated
+  if (!isAuthenticated) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-gray-200">
