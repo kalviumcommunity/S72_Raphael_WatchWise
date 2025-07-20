@@ -6,10 +6,9 @@ import TvShowCard from '../components/Tvshowcard';
 import AnimeCard from '../components/Animecard';
 import Navbar from '../components/navbar';
 import { useSearch } from '../context/SearchContext';
-import { useAuth } from '../context/AuthContext'; // Import your auth context
 
 const API_KEY = "0ace2af581de1152e9f38a6c477220b8";
-const POPULAR_MOVIES_URL = `https://api.themoviedb.org/3/movie/popular?api_key=${API_KEY}`;
+const POPULAR_MOVIES_URL = `https://api.themoviedb.org/3/discover/movie?api_key=${API_KEY}&sort_by=popularity.desc&include_adult=false`;
 const POPULAR_TV_URL = `https://api.themoviedb.org/3/tv/popular?api_key=${API_KEY}`;
 const POPULAR_ANIME_URL = "https://api.jikan.moe/v4/top/anime";
 const SEARCH_MOVIES_URL = `https://api.themoviedb.org/3/search/movie?api_key=${API_KEY}&query=`;
@@ -18,7 +17,6 @@ const SEARCH_ANIME_URL = "https://api.jikan.moe/v4/anime";
 
 const Landing = () => {
   const navigate = useNavigate();
-  const { user, isAuthenticated, loading: authLoading } = useAuth(); // Get auth state
   const { searchState, updateSearchState, clearSearch } = useSearch();
   const [movies, setMovies] = useState([]);
   const [tvShows, setTvShows] = useState([]);
@@ -91,17 +89,6 @@ const Landing = () => {
     }
   }, [loading, movies.length, tvShows.length, anime.length, scrollRestored]);
 
-  // Authentication check
-  useEffect(() => {
-    if (!authLoading) {
-      if (!isAuthenticated) {
-        // Redirect to login page if not authenticated
-        navigate('/login', { replace: true });
-        return;
-      }
-    }
-  }, [isAuthenticated, authLoading, navigate]);
-
   // Save active tab to localStorage
   useEffect(() => {
     localStorage.setItem('activeTab', activeTab);
@@ -109,8 +96,6 @@ const Landing = () => {
 
   // Initial content load
   useEffect(() => {
-    // Only load content if user is authenticated
-    if (!authLoading && isAuthenticated) {
       const loadInitialContent = async () => {
         if (searchState.results) {
           // If we have search results, use them
@@ -126,8 +111,7 @@ const Landing = () => {
       };
 
       loadInitialContent();
-    }
-  }, [searchState.results, isAuthenticated, authLoading]);
+  }, [searchState.results]);
 
   const fetchPopularContent = async (pageNum, isInitial = false) => {
     if (isInitial) {
@@ -319,20 +303,6 @@ const Landing = () => {
       </div>
     );
   };
-
-  // Show loading spinner while checking authentication
-  if (authLoading) {
-    return (
-      <div className="min-h-screen bg-gray-200 flex justify-center items-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-4 border-red-500 border-t-transparent"></div>
-      </div>
-    );
-  }
-
-  // Don't render the page content if user is not authenticated
-  if (!isAuthenticated) {
-    return null;
-  }
 
   return (
     <div className="min-h-screen bg-gray-200">
