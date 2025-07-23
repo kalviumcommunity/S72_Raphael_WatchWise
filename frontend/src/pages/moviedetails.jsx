@@ -196,7 +196,6 @@ const MovieDetails = () => {
       }
       
       const errorMessage = error.response?.data?.error || error.response?.data?.details || 'Unknown error';
-      setUpdateStatus(`Update failed: ${errorMessage}`);
       setTimeout(() => setUpdateStatus(''), 3000);
     }
   };
