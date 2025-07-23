@@ -21,10 +21,11 @@ const allowedOrigins = ['http://localhost:5173', 'https://watchwisely.netlify.ap
 app.use(cors({
   origin: function (origin, callback) {
     if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
+    callback(null, true);
+  } else {
+    console.log("❌ Blocked by CORS:", origin);
+    callback(new Error('Not allowed by CORS'));
+  }
   },
   credentials: true
 }));
