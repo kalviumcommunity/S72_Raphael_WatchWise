@@ -30,9 +30,13 @@ router.get('/:movieId', auth, async (req, res) => {
 // Update movie status
 router.put('/:movieId', auth, async (req, res) => {
     const { watchStatus, rating, movieTitle, posterPath } = req.body;
+    const user = await User.findById(req.user.id);
+    if (!user) {
+    console.log('User not found:', req.user.id);
+    return res.status(404).json({ error: 'User not found' });
+    }
     if (watchStatus === 'notPlanning') {
-    // Remove movie from history if it exists
-    const movieIndex = user.movies.findIndex(m => String(m.movieId) === String(movieId));
+        const movieIndex = user.movies.findIndex(m => String(m.movieId) === String(req.params.movieId));
     if (movieIndex > -1) {
         user.movies.splice(movieIndex, 1); // remove it
     }
