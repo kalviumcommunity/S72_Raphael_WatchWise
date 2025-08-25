@@ -563,7 +563,7 @@ const Profile = () => {
     }
 
     return (
-        <div className="min-h-screen bg-gray-400 rounded-lg flex items-center justify-center">
+        <div className="min-h-screen bg-gray-200 rounded-lg flex items-center justify-center">
             <Navbar />
             <div className="container mx-auto px-4 py-8">
                 {/* Profile Header */}

@@ -3,6 +3,7 @@ import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
 import Navbar from "../components/navbar";
+import MovieCard from "../components/MovieCard";
 
 const API_KEY = "0ace2af581de1152e9f38a6c477220b8";
 const MOVIE_DETAILS_URL = "https://api.themoviedb.org/3/movie/";
@@ -48,6 +49,9 @@ const MovieDetails = () => {
   const [trailers, setTrailers] = useState([]);
   const [selectedTrailer, setSelectedTrailer] = useState(null);
   const [similarMovies, setSimilarMovies] = useState([]);
+  const [loadingSimilar, setLoadingSimilar] = useState(false);
+  const [similarPage, setSimilarPage] = useState(1);
+  const [hasMoreSimilar, setHasMoreSimilar] = useState(true);
 
   useEffect(() => {
     // Reset states immediately when movie ID changes
@@ -58,6 +62,9 @@ const MovieDetails = () => {
     setTrailers([]);
     setSelectedTrailer(null);
     setSimilarMovies([]);
+    setSimilarPage(1);
+    setHasMoreSimilar(true);
+    setLoadingSimilar(false);
 
     // Check authentication status when component mounts
     const token = localStorage.getItem('token');
@@ -83,11 +90,8 @@ const MovieDetails = () => {
           setSelectedTrailer(movieTrailers[0]);
         }
         
-        // Fetch similar movies
-        const similarMoviesResponse = await axios.get(
-          `${MOVIE_DETAILS_URL}${id}/similar?api_key=${API_KEY}`
-        );
-        setSimilarMovies(similarMoviesResponse.data.results.slice(0, 12));
+        // Fetch initial similar movies
+        await fetchSimilarMovies(1, true);
         
         // Only fetch user status if authenticated
         if (token) {
@@ -106,6 +110,43 @@ const MovieDetails = () => {
 
     fetchMovieDetails();
   }, [id]);
+
+  const fetchSimilarMovies = async (page = 1, reset = false) => {
+    if (loadingSimilar) return;
+    
+    setLoadingSimilar(true);
+    try {
+      const response = await axios.get(
+        `${MOVIE_DETAILS_URL}${id}/similar?api_key=${API_KEY}&page=${page}`
+      );
+      
+      const newMovies = response.data.results;
+      
+      if (reset) {
+        setSimilarMovies(newMovies);
+      } else {
+        setSimilarMovies(prev => [...prev, ...newMovies]);
+      }
+      
+      setHasMoreSimilar(page < response.data.total_pages && newMovies.length > 0);
+      setSimilarPage(page);
+    } catch (error) {
+      console.error("Error fetching similar movies:", error);
+    } finally {
+      setLoadingSimilar(false);
+    }
+  };
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.innerHeight + document.documentElement.scrollTop >= document.documentElement.offsetHeight - 100 && hasMoreSimilar && !loadingSimilar) {
+        fetchSimilarMovies(similarPage + 1, false);
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [hasMoreSimilar, loadingSimilar, similarPage, id]);
 
   const fetchUserMovieStatus = async () => {
     try {
@@ -236,155 +277,160 @@ const MovieDetails = () => {
   if (!movie) return <p className="text-center mt-10 text-red-500">Movie not found!</p>;
 
   return (
-    <div className="max-w-4xl mx-auto mt-10 p-6 bg-gray-50 shadow-lg rounded-lg">
-      <Navbar />
+    <>
+      <div className="max-w-4xl mx-auto mt-20 p-6 bg-gray-50 shadow-lg rounded-lg">
+        <Navbar />
 
-      <div className="flex flex-col md:flex-row items-center md:items-start">
-        <img
-          src={`https://image.tmdb.org/t/p/w500${movie.poster_path}`}
-          alt={movie.title}
-          className="w-80 rounded-lg shadow-md"
-        />
-        <div className="md:ml-6 mt-4 md:mt-0 flex-1">
-          <h1 className="text-3xl font-bold">{movie.title}</h1>
-          <p className="text-gray-500 mt-2">📅 {movie.release_date}</p>
-          <p className="mt-4">{movie.overview}</p>
-          <p className="mt-4 font-semibold">⭐ Rating: {movie.vote_average.toFixed(1)}/10</p>
-          <p className="mt-2 text-gray-700">🎭 Genres: {movie.genres.map(g => g.name).join(", ")}</p>
+        <div className="flex flex-col md:flex-row items-center md:items-start">
+          <img
+            src={`https://image.tmdb.org/t/p/w500${movie.poster_path}`}
+            alt={movie.title}
+            className="w-80 rounded-lg shadow-md"
+          />
+          <div className="md:ml-6 mt-4 md:mt-0 flex-1">
+            <h1 className="text-3xl font-bold">{movie.title}</h1>
+            <p className="text-gray-500 mt-2">📅 {movie.release_date}</p>
+            <p className="mt-4">{movie.overview}</p>
+            <p className="mt-4 font-semibold">⭐ Rating: {movie.vote_average.toFixed(1)}/10</p>
+            <p className="mt-2 text-gray-700">🎭 Genres: {movie.genres.map(g => g.name).join(", ")}</p>
 
-          {!isAuthenticated ? (
-            <div className="mt-6 p-4 bg-blue-50 text-blue-700 rounded-lg">
-              <p>Please <button 
-                onClick={() => navigate('/login')}
-                className="text-blue-500 hover:text-blue-700 font-semibold"
-              >
-                log in
-              </button> to track this movie and rate it.</p>
-            </div>
-          ) : (
-            <>
-              {/* Watch Status Buttons */}
-              <div className="mt-6">
-                <h3 className="text-lg font-semibold mb-2">Watch Status</h3>
-                <div className="flex gap-2 w-full px-1">
-                  {Object.entries(WATCH_STATUS).map(([key, value]) => (
-                    <button
-                      key={key}
-                      onClick={() => handleWatchStatusChange(value)}
-                      className={`
-                        px-3 py-2 rounded-lg transition-all duration-300 whitespace-nowrap flex-1
-                        ${watchStatus === value
-                          ? `${WATCH_STATUS_STYLES[value]} text-white transform scale-105`
-                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                        }
-                      `}
-                    >
-                      {WATCH_STATUS_LABELS[value]}
-                    </button>
-                  ))}
-                </div>
+            {!isAuthenticated ? (
+              <div className="mt-6 p-4 bg-blue-50 text-blue-700 rounded-lg">
+                <p>Please <button 
+                  onClick={() => navigate('/login')}
+                  className="text-blue-500 hover:text-blue-700 font-semibold"
+                >
+                  log in
+                </button> to track this movie and rate it.</p>
               </div>
-
-              {/* Rating Buttons - Only show for watched or in progress */}
-              {(watchStatus === WATCH_STATUS.COMPLETED || watchStatus === WATCH_STATUS.IN_PROGRESS) && (
+            ) : (
+              <>
+                {/* Watch Status Buttons */}
                 <div className="mt-6">
-                  <h3 className="text-lg font-semibold mb-2">Your Rating</h3>
-                  <div className="flex w-full max-w-md">
-                    {RATING_CONFIG.map((config, index) => (
+                  <h3 className="text-lg font-semibold mb-2">Watch Status</h3>
+                  <div className="flex gap-2 w-full px-1">
+                    {Object.entries(WATCH_STATUS).map(([key, value]) => (
                       <button
-                        key={config.value}
-                        onClick={() => handleRatingChange(config.value)}
+                        key={key}
+                        onClick={() => handleWatchStatusChange(value)}
                         className={`
-                          flex-1 h-12 flex items-center justify-center
-                          transition-all duration-300 relative
-                          ${index === 0 ? 'rounded-l-lg' : ''}
-                          ${index === RATING_CONFIG.length - 1 ? 'rounded-r-lg' : ''}
-                          ${rating === config.value 
-                            ? `${config.color} text-white transform scale-y-105 z-10 shadow-md` 
+                          px-3 py-2 rounded-lg transition-all duration-300 whitespace-nowrap flex-1
+                          ${watchStatus === value
+                            ? `${WATCH_STATUS_STYLES[value]} text-white transform scale-105`
                             : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                           }
-                          ${index > 0 ? '-ml-px' : ''} // Create joined effect
                         `}
                       >
-                        <span className="text-2xl">{config.emoji}</span>
+                        {WATCH_STATUS_LABELS[value]}
                       </button>
                     ))}
                   </div>
-                  <p className="mt-2 text-sm text-gray-500 flex items-center gap-2">
-                    {rating > 0 ? (
-                      <>
-                        <span>Your rating: {getRatingEmoji(rating)}</span>
-                        <span className={`
-                          px-2 py-1 rounded text-white text-xs
-                          ${getRatingColor(rating)}
-                        `}>
-                          {rating/2}/5
-                        </span>
-                      </>
-                    ) : "Not rated yet"}
-                  </p>
                 </div>
-              )}
 
-              {/* Update Status Message */}
-              {updateStatus && (
-                <div className={`mt-4 p-2 rounded ${
-                  updateStatus.includes('failed') ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
-                }`}>
-                  {updateStatus}
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      </div>
+                {/* Rating Buttons - Only show for watched or in progress */}
+                {(watchStatus === WATCH_STATUS.COMPLETED || watchStatus === WATCH_STATUS.IN_PROGRESS) && (
+                  <div className="mt-6">
+                    <h3 className="text-lg font-semibold mb-2">Your Rating</h3>
+                    <div className="flex w-full max-w-md">
+                      {RATING_CONFIG.map((config, index) => (
+                        <button
+                          key={config.value}
+                          onClick={() => handleRatingChange(config.value)}
+                          className={`
+                            flex-1 h-12 flex items-center justify-center
+                            transition-all duration-300 relative
+                            ${index === 0 ? 'rounded-l-lg' : ''}
+                            ${index === RATING_CONFIG.length - 1 ? 'rounded-r-lg' : ''}
+                            ${rating === config.value 
+                              ? `${config.color} text-white transform scale-y-105 z-10 shadow-md` 
+                              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                            }
+                            ${index > 0 ? '-ml-px' : ''} // Create joined effect
+                          `}
+                        >
+                          <span className="text-2xl">{config.emoji}</span>
+                        </button>
+                      ))}
+                    </div>
+                    <p className="mt-2 text-sm text-gray-500 flex items-center gap-2">
+                      {rating > 0 ? (
+                        <>
+                          <span>Your rating: {getRatingEmoji(rating)}</span>
+                          <span className={`
+                            px-2 py-1 rounded text-white text-xs
+                            ${getRatingColor(rating)}
+                          `}>
+                            {rating/2}/5
+                          </span>
+                        </>
+                      ) : "Not rated yet"}
+                    </p>
+                  </div>
+                )}
 
-      {/* Embedded Trailer Section */}
-      {selectedTrailer && (
-        <div className="mt-8">
-          <h2 className="text-2xl font-bold mb-4">Trailer</h2>
-          <div className="relative w-full overflow-hidden" style={{ paddingTop: '56.25%' }}>
-            <iframe 
-              src={`https://www.youtube.com/embed/${selectedTrailer.key}`}
-              title={selectedTrailer.name}
-              className="absolute top-0 left-0 w-full h-full rounded-lg shadow-md"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-            ></iframe>
+                {/* Update Status Message */}
+                {updateStatus && (
+                  <div className={`mt-4 p-2 rounded ${
+                    updateStatus.includes('failed') ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
+                  }`}>
+                    {updateStatus}
+                  </div>
+                )}
+              </>
+            )}
           </div>
         </div>
-      )}
 
-      {/* Similar Movies Section with Horizontal Scroll */}
+        {/* Embedded Trailer Section */}
+        {selectedTrailer && (
+          <div className="mt-8">
+            <h2 className="text-2xl font-bold mb-4">Trailer</h2>
+            <div className="relative w-full overflow-hidden" style={{ paddingTop: '56.25%' }}>
+              <iframe 
+                src={`https://www.youtube.com/embed/${selectedTrailer.key}`}
+                title={selectedTrailer.name}
+                className="absolute top-0 left-0 w-full h-full rounded-lg shadow-md"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              ></iframe>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Similar Movies Section - Outside main container, full width */}
       {similarMovies.length > 0 && (
-        <div className="mt-12">
-          <h2 className="text-2xl font-bold mb-4">Similar Movies</h2>
-          <div className="overflow-x-auto">
-            <div className="flex space-x-4 pb-4 min-w-max">
+        <div className="w-full bg-gray-100 py-12">
+          <div className="max-w-7xl mx-auto px-6">
+            <div className="mb-8 bg-white p-4 rounded-lg shadow-md w-[300px] mx-auto">
+            <h2 className="text-3xl font-bold text-center">Similar Movies</h2>
+            </div>
+            <div className="grid grid-cols-4 gap-6">
               {similarMovies.map(movie => (
-                <div 
-                  key={movie.id}
-                  className="cursor-pointer flex-none w-32 md:w-40 transition hover:scale-105 bg-gray-200 rounded-xl"
-                  onClick={() => handleSimilarMovieClick(movie.id)}
-                >
-                  <img
-                    src={movie.poster_path 
-                      ? `https://image.tmdb.org/t/p/w200${movie.poster_path}`
-                      : 'https://via.placeholder.com/200x300?text=No+Poster'
-                    }
-                    alt={movie.title}
-                    className="rounded-lg shadow-md w-full h-48 md:h-60 object-cover"
-                  />
-                  <h3 className="mt-2 text-sm font-medium truncate">{movie.title}</h3>
-                  <p className="text-xs text-gray-500">{movie.release_date?.substring(0, 4)}</p>
+                <div key={movie.id} onClick={() => handleSimilarMovieClick(movie.id)}>
+                  <MovieCard movie={movie} />
                 </div>
               ))}
             </div>
+            
+            {/* Loading indicator */}
+            {loadingSimilar && (
+              <div className="flex justify-center items-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+                <span className="ml-2 text-gray-600">Loading more movies...</span>
+              </div>
+            )}
+            
+            {/* End of results indicator */}
+            {!hasMoreSimilar && similarMovies.length > 0 && (
+              <div className="text-center py-8 text-gray-500">
+                No more similar movies to load
+              </div>
+            )}
           </div>
         </div>
       )}
-
-    </div>
+    </>
   );
 };
 
