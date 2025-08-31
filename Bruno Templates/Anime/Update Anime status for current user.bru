@@ -1,0 +1,15 @@
+meta {
+  name: Update Anime status for current user
+  type: http
+  seq: 2
+}
+
+put {
+  url: https://s72-raphael-watchwise.onrender.com/controller/anime/:animeID
+  body: none
+  auth: none
+}
+
+params:path {
+  animeID: 
+}

@@ -1,0 +1,15 @@
+meta {
+  name: Update TV show status
+  type: http
+  seq: 2
+}
+
+put {
+  url: https://s72-raphael-watchwise.onrender.com/controller/tvshow/:showId
+  body: none
+  auth: none
+}
+
+params:path {
+  showId: 
+}
