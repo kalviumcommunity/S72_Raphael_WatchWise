@@ -1,0 +1,15 @@
+meta {
+  name: Update movie status
+  type: http
+  seq: 2
+}
+
+put {
+  url: https://s72-raphael-watchwise.onrender.com/controller/movie/:movieId
+  body: none
+  auth: none
+}
+
+params:path {
+  movieId: 
+}
