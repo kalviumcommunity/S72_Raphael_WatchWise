@@ -5,7 +5,11 @@ meta {
 }
 
 get {
-  url: https://s72-raphael-watchwise.onrender.com/controller/user/api/profile/me
+  url: https://s72-raphael-watchwise.onrender.com/api/profile/me
   body: none
-  auth: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY3ZDkzYjhkZmM3OTcxMDQ1MjRlOGJjMiIsImlhdCI6MTc1Njc0NTU2OSwiZXhwIjoxNzU2NzQ5MTY5fQ.mIPmHhuK7xR9fGTGwHNJHm8bzK9vKJDEwPDRXmUKXEo
 }
