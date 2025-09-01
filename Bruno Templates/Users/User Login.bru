@@ -5,7 +5,14 @@ meta {
 }
 
 post {
-  url: https://s72-raphael-watchwise.onrender.com/controller/user/api/auth/login
-  body: none
+  url: https://s72-raphael-watchwise.onrender.com/api/auth/login
+  body: json
   auth: none
+}
+
+body:json {
+  {
+    "email":"raph@gmail.com",
+    "password":"12345"
+  }
 }
