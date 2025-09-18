@@ -12,7 +12,6 @@ import TvShowDetails from './pages/tvshowdetails';
 import AnimeDetails from './pages/animedetails';
 import About from './pages/about';
 import Recommendations from './pages/recommendations';
-import OAuthRedirect from "./pages/OAuthRedirect";
 
 function App(){
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -27,10 +26,9 @@ function App(){
           <Route path="/signup" element={<Signup />} />
           <Route path="/login" element={<Login setIsAuthenticated={setIsAuthenticated} />} />
           <Route path="/profile" element={<Profile />} />
-          <Route path="/home" element={<Home />} />
+          <Route path="/home" element={<Home setIsAuthenticated={setIsAuthenticated} />} />
           <Route path="/about" element={<About />} />
           <Route path="/recommendations" element={<Recommendations />} />
-          <Route path="/auth/callback" element={<OAuthRedirect setIsAuthenticated={setIsAuthenticated} />} />
       </Routes>
     </Router>
   </SearchProvider>
