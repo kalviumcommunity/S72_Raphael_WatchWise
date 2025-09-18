@@ -109,18 +109,24 @@ app.get(
   "/auth/google/callback",
   passport.authenticate("google", { failureRedirect: "/" }),
   (req, res) => {
-    // ✅ Generate token here
+    // Generate a JWT token for the authenticated user
     const token = jwt.sign(
-      { id: req.user.id || req.user.email }, // use something unique
+      {
+        id: req.user.id || req.user.email, // fallback if no id in profile
+        name: req.user.displayName,
+        email: req.user.email,
+      },
       process.env.JWT_SECRET,
       { expiresIn: "7d" }
     );
 
-    // ✅ Redirect to frontend with token
+    // Redirect to frontend with token as query param
     const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
+    console.log(`✅ Redirecting to ${FRONTEND_URL}/home with token`);
     res.redirect(`${FRONTEND_URL}/home?token=${token}`);
   }
 );
+
 
 app.get("/logout", (req, res) => {
   req.logout(() => {
