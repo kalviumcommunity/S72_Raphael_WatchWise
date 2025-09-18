@@ -123,7 +123,8 @@ app.get(
     // Redirect to frontend with token as query param
     const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
     console.log(`✅ Redirecting to ${FRONTEND_URL}/home with token`);
-    res.redirect(`${FRONTEND_URL}/home?token=${token}`);
+    res.redirect(`http://localhost:5173/auth/callback?token=${token}`);
+    // res.redirect(`https://watchwisely.netlify.app/auth/callback?token=${token}`);
   }
 );
 
