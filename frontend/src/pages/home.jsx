@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import Navbar from '../components/navbar';
 import MovieCard from '../components/Moviecard';
@@ -25,7 +25,7 @@ const WATCH_STATUS_COLORS = {
   [WATCH_STATUS.COMPLETED]: 'border-green-500'
 };
 
-const Home = () => {
+const Home = ({ setIsAuthenticated }) => {
   const navigate = useNavigate();
   const [movies, setMovies] = useState({});
   const [tvShows, setTvShows] = useState({});
@@ -35,12 +35,27 @@ const Home = () => {
     tvShows: true,
     anime: true
   });
+  const location = useLocation();
   const [error, setError] = useState(null);
   const [stats, setStats] = useState(null);
   const [activeTab, setActiveTab] = useState(() => {
     const savedTab = localStorage.getItem('homeActiveTab');
     return savedTab || 'movies';
   });
+  useEffect(() => {
+  const params = new URLSearchParams(location.search);
+  const token = params.get("token");
+
+  if (token) {
+    localStorage.setItem("token", token);
+    // Set authentication state if function is provided
+    if (setIsAuthenticated) {
+      setIsAuthenticated(true);
+    }
+    // remove ?token=... from the URL for a cleaner look
+    navigate("/home", { replace: true });
+  }
+}, [location, navigate, setIsAuthenticated]);
   
   // Search state
   const [searchQuery, setSearchQuery] = useState('');

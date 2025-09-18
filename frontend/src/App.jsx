@@ -26,7 +26,7 @@ function App(){
           <Route path="/signup" element={<Signup />} />
           <Route path="/login" element={<Login setIsAuthenticated={setIsAuthenticated} />} />
           <Route path="/profile" element={<Profile />} />
-          <Route path="/home" element={<Home />} />
+          <Route path="/home" element={<Home setIsAuthenticated={setIsAuthenticated} />} />
           <Route path="/about" element={<About />} />
           <Route path="/recommendations" element={<Recommendations />} />
       </Routes>

@@ -3,7 +3,7 @@ import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
 import Navbar from "../components/navbar";
-import MovieCard from "../components/MovieCard";
+import MovieCard from "../components/Moviecard";
 
 const API_KEY = "0ace2af581de1152e9f38a6c477220b8";
 const MOVIE_DETAILS_URL = "https://api.themoviedb.org/3/movie/";
