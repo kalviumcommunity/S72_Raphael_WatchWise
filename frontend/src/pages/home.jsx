@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import Navbar from '../components/navbar';
 import MovieCard from '../components/Moviecard';
@@ -35,12 +35,23 @@ const Home = () => {
     tvShows: true,
     anime: true
   });
+  const location = useLocation();
   const [error, setError] = useState(null);
   const [stats, setStats] = useState(null);
   const [activeTab, setActiveTab] = useState(() => {
     const savedTab = localStorage.getItem('homeActiveTab');
     return savedTab || 'movies';
   });
+  useEffect(() => {
+  const params = new URLSearchParams(location.search);
+  const token = params.get("token");
+
+  if (token) {
+    localStorage.setItem("token", token);
+    // remove ?token=... from the URL for a cleaner look
+    navigate("/home", { replace: true });
+  }
+}, [location, navigate]);
   
   // Search state
   const [searchQuery, setSearchQuery] = useState('');

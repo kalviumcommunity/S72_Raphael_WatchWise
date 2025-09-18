@@ -12,6 +12,7 @@ import TvShowDetails from './pages/tvshowdetails';
 import AnimeDetails from './pages/animedetails';
 import About from './pages/about';
 import Recommendations from './pages/recommendations';
+import OAuthRedirect from "./pages/OAuthRedirect";
 
 function App(){
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -29,6 +30,7 @@ function App(){
           <Route path="/home" element={<Home />} />
           <Route path="/about" element={<About />} />
           <Route path="/recommendations" element={<Recommendations />} />
+          <Route path="/auth/callback" element={<OAuthRedirect setIsAuthenticated={setIsAuthenticated} />} />
       </Routes>
     </Router>
   </SearchProvider>
