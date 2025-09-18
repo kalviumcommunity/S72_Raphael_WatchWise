@@ -1,13 +1,13 @@
 const express = require('express');
 const router = express.Router();
-const auth = require('../middleware/auth');
+const { authMiddleware } = require("../middleware/auth");
 const User = require('../model/user');
 const cors = require('cors');
 
 router.use(cors());
 
 // Get movie status for current user
-router.get('/:movieId', auth, async (req, res) => {
+router.get('/:movieId', authMiddleware, async (req, res) => {
     try {
         const user = await User.findById(req.user.id);
         if (!user) {
@@ -28,7 +28,7 @@ router.get('/:movieId', auth, async (req, res) => {
 });
 
 // Update movie status
-router.put('/:movieId', auth, async (req, res) => {
+router.put('/:movieId', authMiddleware, async (req, res) => {
     const { watchStatus, rating, movieTitle, posterPath } = req.body;
     const user = await User.findById(req.user.id);
     if (!user) {
@@ -196,7 +196,7 @@ router.put('/:movieId', auth, async (req, res) => {
 });
 
 // Get all movies for current user
-router.get('/', auth, async (req, res) => {
+router.get('/', authMiddleware, async (req, res) => {
     try {
         const user = await User.findById(req.user.id);
         if (!user) {

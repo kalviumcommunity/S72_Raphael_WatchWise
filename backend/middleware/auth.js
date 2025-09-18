@@ -1,5 +1,29 @@
 const jwt = require("jsonwebtoken");
 require("dotenv").config(); // Load environment variables
+const passport = require('passport');
+const GoogleStrategy = require('passport-google-oauth2').Strategy;
+
+passport.serializeUser((user, done) => done(null, user));
+passport.deserializeUser((obj, done) => done(null, obj));
+
+passport.use(new GoogleStrategy({
+    clientID: process.env.GOOGLE_CLIENT_ID,
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    callbackURL: process.env.GOOGLE_CALLBACK_URL
+  },
+  (accessToken, refreshToken, profile, done) => {
+    // Here you can store or update the user in the database
+    return done(null, profile);
+  }
+));
+
+function ensureAuthenticated(req, res, next) {
+  if (req.isAuthenticated()) {
+    return next();
+  }
+  res.status(401).json({ message: "Unauthorized" });
+}
+
 
 const authMiddleware = (req, res, next) => {
     try {
@@ -22,7 +46,7 @@ const authMiddleware = (req, res, next) => {
         }
 
         try {
-            const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+            const decoded = jwt.verify(token, process.env.JWT_SECRET);
             req.user = decoded;
             next();
         } catch (jwtError) {
@@ -35,4 +59,4 @@ const authMiddleware = (req, res, next) => {
     }
 };
 
-module.exports = authMiddleware;
+module.exports = { authMiddleware, ensureAuthenticated };

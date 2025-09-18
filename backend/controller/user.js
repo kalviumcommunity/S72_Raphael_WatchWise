@@ -8,7 +8,7 @@ const router = express.Router();
 const authRouter = express.Router();
 const User = require("../model/user"); // Import User model
 const UserStats = require("../model/userStats");
-const authMiddleware = require("../middleware/auth"); // Import auth middleware
+const { authMiddleware } = require("../middleware/auth"); // Import auth middleware
 require("dotenv").config(); // Load environment variables
 
 // Configure multer for file upload

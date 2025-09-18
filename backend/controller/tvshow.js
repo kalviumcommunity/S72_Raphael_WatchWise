@@ -1,10 +1,10 @@
 const express = require('express');
 const router = express.Router();
-const auth = require('../middleware/auth');
+const { authMiddleware } = require("../middleware/auth");
 const User = require('../model/user');
 
 // Get TV show status for current user
-router.get('/:showId', auth, async (req, res) => {
+router.get('/:showId', authMiddleware, async (req, res) => {
     try {
         const user = await User.findById(req.user.id);
         if (!user) {
@@ -25,7 +25,7 @@ router.get('/:showId', auth, async (req, res) => {
 });
 
 // Update TV show status
-router.put('/:showId', auth, async (req, res) => {
+router.put('/:showId', authMiddleware, async (req, res) => {
     try {
         console.log('Received update request:', {
             body: req.body,
@@ -150,7 +150,7 @@ router.put('/:showId', auth, async (req, res) => {
 });
 
 // Get all TV shows for current user
-router.get('/', auth, async (req, res) => {
+router.get('/', authMiddleware, async (req, res) => {
     try {
         const user = await User.findById(req.user.id);
         if (!user) {

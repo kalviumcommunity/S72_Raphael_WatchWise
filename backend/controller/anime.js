@@ -1,10 +1,10 @@
 const express = require('express');
 const router = express.Router();
-const auth = require('../middleware/auth');
+const { authMiddleware } = require("../middleware/auth");
 const User = require('../model/user');
 
 // Get anime status for current user
-router.get('/:animeId', auth, async (req, res) => {
+router.get('/:animeId', authMiddleware, async (req, res) => {
     try {
         const user = await User.findById(req.user.id);
         if (!user) {
@@ -29,7 +29,7 @@ router.get('/:animeId', auth, async (req, res) => {
 });
 
 // Update anime status
-router.put('/:animeId', auth, async (req, res) => {
+router.put('/:animeId', authMiddleware, async (req, res) => {
     try {
         console.log('Received update request:', {
             body: req.body,
@@ -154,7 +154,7 @@ router.put('/:animeId', auth, async (req, res) => {
 });
 
 // Get all anime for current user
-router.get('/', auth, async (req, res) => {
+router.get('/', authMiddleware, async (req, res) => {
     try {
         const user = await User.findById(req.user.id);
         if (!user) {
