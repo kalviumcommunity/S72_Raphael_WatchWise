@@ -126,10 +126,10 @@ app.get(
         { expiresIn: "7d" }
       );
 
-      // Redirect to frontend with token as query param
+      // Redirect to frontend home page with token as query param
       const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
-      console.log(`✅ Redirecting to ${FRONTEND_URL}/auth/callback with token`);
-      res.redirect(`${FRONTEND_URL}/auth/callback?token=${token}`);
+      console.log(`✅ Redirecting to ${FRONTEND_URL}/home with token`);
+      res.redirect(`${FRONTEND_URL}/home?token=${token}`);
     } catch (error) {
       console.error("❌ OAuth callback error:", error);
       const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
