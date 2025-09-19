@@ -23,7 +23,7 @@ function App(){
           <Route path="/movie/:id" element={<MovieDetails />} />
           <Route path="/tv/:id" element={<TvShowDetails />} />
           <Route path="/anime/:id" element={<AnimeDetails />} />
-          <Route path="/signup" element={<Signup />} />
+          <Route path="/signup" element={<Signup setIsAuthenticated={setIsAuthenticated}/>} />
           <Route path="/login" element={<Login setIsAuthenticated={setIsAuthenticated} />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/home" element={<Home setIsAuthenticated={setIsAuthenticated} />} />

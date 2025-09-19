@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { Box, Button, TextField, Typography, Container } from '@mui/material';
+import Navbar from '../components/navbar';
 
 function Signup({ setIsAuthenticated }) {
     const [name, setName] = useState('');
@@ -18,26 +19,34 @@ function Signup({ setIsAuthenticated }) {
             setError('Name is required');
             return;
         }
+
         try {
-            const response = await axios.post('https://s72-raphael-watchwise.onrender.com/api/auth/register', {
-                name,
-                email,
-                password
+            const response = await axios.post('http://localhost:3000/api/auth/register', {
+            name,
+            email,
+            password
             });
-            
+
+            // ✅ Save token and user info
             localStorage.setItem('token', response.data.token);
+            localStorage.setItem('user', JSON.stringify(response.data.user));
+
+            // ✅ Update state and redirect
             setIsAuthenticated(true);
             navigate('/home');
         } catch (error) {
-            setError(error.response?.data?.error);
+            console.error(error);
+            setError(error.response?.data?.error || "Signup failed. Please try again.");
         }
     };
 
     return (
+        <>
+        <Navbar />
         <Container component="main" maxWidth="xs">
             <Box
                 sx={{
-                    marginTop: 8,
+                    marginTop: 20,
                     display: 'flex',
                     flexDirection: 'column',
                     alignItems: 'center',
@@ -106,6 +115,7 @@ function Signup({ setIsAuthenticated }) {
                 </Box>
             </Box>
         </Container>
+        </>
     );
 }
 

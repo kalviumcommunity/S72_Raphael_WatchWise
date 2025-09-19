@@ -56,7 +56,7 @@ const Recommendations = () => {
     useEffect(() => {
         const token = localStorage.getItem('token');
         if (!token) {
-            navigate('/login');
+            navigate('/signup');
             return;
         }
 
@@ -92,13 +92,13 @@ const Recommendations = () => {
         try {
             setLoading(true);
             const [movieResponse, tvResponse, animeResponse] = await Promise.all([
-                axios.get("https://s72-raphael-watchwise.onrender.com/api/profile/movies", {
+                axios.get("http://localhost:3000/api/profile/movies", {
                     headers: { 'Authorization': `Bearer ${token}` }
                 }),
-                axios.get("https://s72-raphael-watchwise.onrender.com/api/profile/tvshows", {
+                axios.get("http://localhost:3000/api/profile/tvshows", {
                     headers: { 'Authorization': `Bearer ${token}` }
                 }),
-                axios.get("https://s72-raphael-watchwise.onrender.com/api/profile/anime", {
+                axios.get("http://localhost:3000/api/profile/anime", {
                     headers: { 'Authorization': `Bearer ${token}` }
                 })
             ]);

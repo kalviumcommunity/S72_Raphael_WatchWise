@@ -4,295 +4,183 @@ const jwt = require("jsonwebtoken");
 const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
-const router = express.Router();
-const authRouter = express.Router();
-const User = require("../model/user"); // Import User model
+const User = require("../model/user");
 const UserStats = require("../model/userStats");
-const { authMiddleware } = require("../middleware/auth"); // Import auth middleware
-require("dotenv").config(); // Load environment variables
+const { authMiddleware } = require("../middleware/auth");
+require("dotenv").config();
 
-// Configure multer for file upload
+const authRouter = express.Router();
+const router = express.Router();
+
+// Multer configuration for profile image upload
 const storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        const uploadDir = 'uploads/profile-images';
-        // Create directory if it doesn't exist
-        if (!fs.existsSync(uploadDir)) {
-            fs.mkdirSync(uploadDir, { recursive: true });
-        }
+    destination: (req, file, cb) => {
+        const uploadDir = "uploads/profile-images";
+        if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
         cb(null, uploadDir);
     },
-    filename: function (req, file, cb) {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    filename: (req, file, cb) => {
+        const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
         cb(null, uniqueSuffix + path.extname(file.originalname));
-    }
+    },
 });
 
 const upload = multer({
-    storage: storage,
-    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
-    fileFilter: function (req, file, cb) {
-        const filetypes = /jpeg|jpg|png|gif/;
-        const mimetype = filetypes.test(file.mimetype);
-        const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
-
-        if (mimetype && extname) {
-            return cb(null, true);
-        }
+    storage,
+    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+    fileFilter: (req, file, cb) => {
+        const allowedTypes = /jpeg|jpg|png|gif/;
+        const isValidType = allowedTypes.test(file.mimetype) && allowedTypes.test(path.extname(file.originalname).toLowerCase());
+        if (isValidType) return cb(null, true);
         cb(new Error("Only image files are allowed!"));
-    }
-}).single('image');
+    },
+}).single("image");
 
-// Auth Routes (mounted at /api/auth)
-authRouter.post("/register", (req, res) => {
-    upload(req, res, async function (err) {
-        if (err instanceof multer.MulterError) {
-            return res.status(400).json({ error: "File upload error: " + err.message });
-        } else if (err) {
-            return res.status(400).json({ error: err.message });
-        }
+// ---------------- AUTH ROUTES ----------------
 
-        try {
-            const { name, email, password } = req.body;
-
-            console.log("Registration request received:", { 
-                name,
-                email,
-                passwordLength: password?.length,
-                hasPassword: !!password
-            });
-
-            if (!name || !email || !password) {
-                return res.status(400).json({ error: "Name, email, and password are required" });
-            }
-
-            if (typeof name !== 'string' || name.length < 3 || name.length > 16) {
-                return res.status(400).json({ error: "Name must be between 3 and 16 characters" });
-            }
-            if (!/^[a-zA-Z0-9_ ]+$/.test(name)) {
-                return res.status(400).json({ error: "Name can only contain letters, numbers, spaces, and underscores" });
-            }
-
-            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-                return res.status(400).json({ error: "Invalid email format" });
-            }
-
-            if (password.length < 8) {
-                return res.status(400).json({ error: "Password must be at least 8 characters long" });
-            }
-            if (!/[a-z]/.test(password)) {
-                return res.status(400).json({ error: "Password must contain at least one lowercase letter" });
-            }
-            if (!/[A-Z]/.test(password)) {
-                return res.status(400).json({ error: "Password must contain at least one uppercase letter" });
-            }
-            if (!/[0-9]/.test(password)) {
-                return res.status(400).json({ error: "Password must contain at least one number" });
-            }
-            if (!/[^a-zA-Z0-9\s]/.test(password)) {
-                return res.status(400).json({ error: "Password must contain at least one special character" });
-            }
-
-            const existingUser = await User.findOne({ email });
-            if (existingUser) {
-                return res.status(400).json({ error: "Email is already registered" });
-            }
-
-            const userData = {
-                name,
-                email,
-                password
-            };
-
-            if (req.file) {
-                userData.image = req.file.path;
-            }
-
-            const newUser = new User(userData);
-            const savedUser = await newUser.save();
-
-            console.log("User registered:", {
-                email: savedUser.email,
-                hashedPasswordLength: savedUser.password?.length,
-                hasPassword: !!savedUser.password
-            });
-
-            res.status(201).json({ message: "User registered successfully" });
-        } catch (error) {
-            console.error("Registration error:", error);
-            res.status(500).json({ error: "Server error" });
-        }
-    });
-});
-
-authRouter.post("/login", async (req, res) => {
+// Register new user
+authRouter.post("/register", async (req, res) => {
     try {
-        console.log("Received login request body:", req.body);
-        const { email, password } = req.body;
+        const { name, email, password } = req.body;
+
+        // Input validation
+        if (!name || !email || !password) return res.status(400).json({ error: "Name, email, and password are required" });
+        if (typeof name !== "string" || name.length < 3 || name.length > 16) return res.status(400).json({ error: "Name must be between 3 and 16 characters" });
+        if (!/^[a-zA-Z0-9_ ]+$/.test(name)) return res.status(400).json({ error: "Name can only contain letters, numbers, spaces, and underscores" });
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: "Invalid email format" });
+
+        // Password validation
+        if (password.length < 8) return res.status(400).json({ error: "Password must be at least 8 characters long" });
+        if (!/[a-z]/.test(password)) return res.status(400).json({ error: "Password must contain at least one lowercase letter" });
+        if (!/[A-Z]/.test(password)) return res.status(400).json({ error: "Password must contain at least one uppercase letter" });
+        if (!/[0-9]/.test(password)) return res.status(400).json({ error: "Password must contain at least one number" });
+        if (!/[^a-zA-Z0-9\s]/.test(password)) return res.status(400).json({ error: "Password must contain at least one special character" });
+
+        const existingUser = await User.findOne({ email });
+        if (existingUser) return res.status(400).json({ error: "Email is already registered" });
+
+        const userData = { name, email, password };
+        const newUser = new User(userData);
+        await newUser.save();
+
+        // Generate JWT token for immediate login after registration
+        const token = jwt.sign({ id: newUser._id.toString() }, process.env.JWT_SECRET || "your-secret-key", { expiresIn: "1h" });
         
-        if (!email || !password) {
-            console.log("Missing email or password");
-            return res.status(400).json({ error: "Email and password are required" });
-        }
-
-        const user = await User.findOne({ email });
-        console.log("User search result:", {
-            found: !!user,
-            email: email,
-            userEmail: user?.email,
-            hasPassword: !!user?.password
+        res.status(201).json({ 
+            message: "User registered successfully",
+            token,
+            user: { id: newUser._id.toString(), name: newUser.name, email: newUser.email }
         });
-
-        if (!user) {
-            return res.status(400).json({ error: "User not found with this email" });
-        }
-
-        try {
-            const isMatch = await bcrypt.compare(password, user.password);
-            console.log("Password comparison:", {
-                isMatch,
-                providedPassword: password,
-                hashedPasswordLength: user.password.length
-            });
-            
-            if (!isMatch) {
-                return res.status(400).json({ error: "Incorrect password" });
-            }
-
-            // Generate JWT token with user ID
-            const token = jwt.sign(
-                { id: user._id.toString() }, 
-                process.env.JWT_SECRET || 'your-secret-key',
-                { expiresIn: "1h" }
-            );
-
-            // Log the token details for debugging
-            console.log("Generated token details:", {
-                userId: user._id.toString(),
-                tokenLength: token.length
-            });
-
-            res.json({ 
-                token, 
-                user: { 
-                    id: user._id.toString(), 
-                    name: user.name, 
-                    email: user.email 
-                } 
-            });
-        } catch (bcryptError) {
-            console.error("Bcrypt comparison error:", bcryptError);
-            return res.status(500).json({ error: "Error verifying password" });
-        }
     } catch (error) {
-        console.error("Login error:", error);
+        console.error("Registration error:", error);
         res.status(500).json({ error: "Server error" });
     }
 });
 
-// Profile Routes (mounted at /api/profile)
+// Login user
+authRouter.post("/login", async (req, res) => {
+  try {
+    console.log("Login request received:", { body: req.body, headers: req.headers });
+
+    const { email, password } = req.body;
+
+    // Validate input
+    if (!email || !password) {
+      console.log("Missing email or password");
+      return res.status(400).json({ message: "Email and password are required" });
+    }
+
+    // Find user
+    const user = await User.findOne({ email });
+    if (!user) {
+      console.log("User not found for email:", email);
+      return res.status(401).json({ message: "Invalid email or password" });
+    }
+
+    // Compare password
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      console.log("Password mismatch for user:", email);
+      return res.status(401).json({ message: "Invalid email or password" });
+    }
+
+    // Generate token
+    const token = jwt.sign(
+      { id: user._id.toString() },
+      process.env.JWT_SECRET || "your-secret-key",
+      { expiresIn: "1h" }
+    );
+
+    console.log("Login successful for user:", email);
+    res.json({
+      token,
+      user: { id: user._id.toString(), name: user.name, email: user.email },
+    });
+
+  } catch (error) {
+    console.error("Login error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+
+// ---------------- PROFILE ROUTES ----------------
+
+// Get current user profile
 router.get("/me", authMiddleware, async (req, res) => {
     try {
         const user = await User.findById(req.user.id).select("-password");
         if (!user) return res.status(404).json({ error: "User not found" });
 
-        // Get or create user stats
         let userStats = await UserStats.findOne({ userId: user._id });
-        if (!userStats) {
-            userStats = await new UserStats({ userId: user._id }).save();
-        }
+        if (!userStats) userStats = await new UserStats({ userId: user._id }).save();
 
-        // Log the user profile data including the image path
-        console.log("User profile fetched:", {
-            id: user._id,
-            name: user.name,
-            email: user.email,
-            image: user.image,
-            stats: userStats
-        });
-
-        res.json({
-            ...user.toObject(),
-            stats: {
-                movies: userStats.movies,
-                tvShows: userStats.tvShows,
-                anime: userStats.anime
-            }
-        });
+        res.json({ ...user.toObject(), stats: userStats });
     } catch (error) {
         console.error("Profile fetch error:", error);
         res.status(500).json({ error: "Server error" });
     }
 });
 
+// Update profile
 router.put("/me", authMiddleware, (req, res) => {
-    upload(req, res, async function (err) {
-        if (err instanceof multer.MulterError) {
-            return res.status(400).json({ error: "File upload error: " + err.message });
-        } else if (err) {
-            return res.status(400).json({ error: err.message });
-        }
+    upload(req, res, async (err) => {
+        if (err instanceof multer.MulterError) return res.status(400).json({ error: "File upload error: " + err.message });
+        if (err) return res.status(400).json({ error: err.message });
 
         try {
             const { name, email, password } = req.body;
             const userId = req.user.id;
-
             const updateData = {};
 
-            if (name) {
-                updateData.name = name;
-            }
+            if (name) updateData.name = name;
             if (email) {
-                // Check if the new email is already in use by another user
-                const existingUserWithEmail = await User.findOne({ email });
-                if (existingUserWithEmail && existingUserWithEmail._id.toString() !== userId) {
-                    return res.status(400).json({ error: "Email is already in use by another user" });
-                }
+                const existingUser = await User.findOne({ email });
+                if (existingUser && existingUser._id.toString() !== userId) return res.status(400).json({ error: "Email is already in use" });
                 updateData.email = email;
             }
 
             if (password) {
-                // Password complexity checks
-                if (password.length < 8) {
-                    return res.status(400).json({ error: "Password must be at least 8 characters long" });
-                }
-                if (!/[a-z]/.test(password)) {
-                    return res.status(400).json({ error: "Password must contain at least one lowercase letter" });
-                }
-                if (!/[A-Z]/.test(password)) {
-                    return res.status(400).json({ error: "Password must contain at least one uppercase letter" });
-                }
-                if (!/[0-9]/.test(password)) {
-                    return res.status(400).json({ error: "Password must contain at least one number" });
-                }
-                if (!/[^a-zA-Z0-9\s]/.test(password)) {
-                    return res.status(400).json({ error: "Password must contain at least one symbol" });
-                }
-                // Hash the new password
-                const hashedPassword = await bcrypt.hash(password, 10);
-                updateData.password = hashedPassword;
+                if (password.length < 8) return res.status(400).json({ error: "Password must be at least 8 characters long" });
+                if (!/[a-z]/.test(password)) return res.status(400).json({ error: "Password must contain at least one lowercase letter" });
+                if (!/[A-Z]/.test(password)) return res.status(400).json({ error: "Password must contain at least one uppercase letter" });
+                if (!/[0-9]/.test(password)) return res.status(400).json({ error: "Password must contain at least one number" });
+                if (!/[^a-zA-Z0-9\s]/.test(password)) return res.status(400).json({ error: "Password must contain at least one symbol" });
+
+                updateData.password = await bcrypt.hash(password, 10);
             }
 
             if (req.file) {
-                // Delete old image if it exists
                 const user = await User.findById(userId);
-                if (user.image && user.image.startsWith('uploads/')) {
-                    const oldImagePath = path.join(__dirname, '..', user.image);
-                    if (fs.existsSync(oldImagePath)) {
-                        fs.unlinkSync(oldImagePath);
-                    }
+                if (user.image && user.image.startsWith("uploads/")) {
+                    const oldImagePath = path.join(__dirname, "..", user.image);
+                    if (fs.existsSync(oldImagePath)) fs.unlinkSync(oldImagePath);
                 }
                 updateData.image = req.file.path;
             }
 
-            const updatedUser = await User.findByIdAndUpdate(
-                userId,
-                updateData,
-                { new: true }
-            ).select("-password");
-
-            if (!updatedUser) {
-                return res.status(404).json({ error: "User not found" });
-            }
+            const updatedUser = await User.findByIdAndUpdate(userId, updateData, { new: true }).select("-password");
+            if (!updatedUser) return res.status(404).json({ error: "User not found" });
 
             res.json(updatedUser);
         } catch (error) {
@@ -302,19 +190,17 @@ router.put("/me", authMiddleware, (req, res) => {
     });
 });
 
+// Update stats
 router.put("/me/stats", authMiddleware, async (req, res) => {
     try {
         const { movies, tvShows, anime } = req.body;
-        
         let userStats = await UserStats.findOne({ userId: req.user.id });
-        if (!userStats) {
-            userStats = new UserStats({ userId: req.user.id });
-        }
+        if (!userStats) userStats = new UserStats({ userId: req.user.id });
 
         if (movies) userStats.movies = { ...userStats.movies, ...movies };
         if (tvShows) userStats.tvShows = { ...userStats.tvShows, ...tvShows };
         if (anime) userStats.anime = { ...userStats.anime, ...anime };
-        
+
         userStats.lastUpdated = Date.now();
         await userStats.save();
 
@@ -325,17 +211,13 @@ router.put("/me/stats", authMiddleware, async (req, res) => {
     }
 });
 
-// ✅ DELETE: Delete current user's account (Protected)
+// Delete user account
 router.delete("/me", authMiddleware, async (req, res) => {
     try {
         const deletedUser = await User.findByIdAndDelete(req.user.id);
-        if (!deletedUser) {
-            return res.status(404).json({ error: "User not found" });
-        }
-        
-        // Also delete user stats
+        if (!deletedUser) return res.status(404).json({ error: "User not found" });
+
         await UserStats.findOneAndDelete({ userId: req.user.id });
-        
         res.json({ message: "Account deleted successfully" });
     } catch (error) {
         console.error("Account deletion error:", error);
@@ -343,31 +225,19 @@ router.delete("/me", authMiddleware, async (req, res) => {
     }
 });
 
-// ✅ PUT: Update current user's password (Protected)
+// Change password
 router.put("/me/password", authMiddleware, async (req, res) => {
     try {
         const { currentPassword, newPassword } = req.body;
+        if (!currentPassword || !newPassword) return res.status(400).json({ error: "Current and new passwords are required" });
 
-        // Validate input
-        if (!currentPassword || !newPassword) {
-            return res.status(400).json({ error: "Current password and new password are required" });
-        }
-
-        // Get user with password
         const user = await User.findById(req.user.id);
-        if (!user) {
-            return res.status(404).json({ error: "User not found" });
-        }
+        if (!user) return res.status(404).json({ error: "User not found" });
 
-        // Verify current password
         const isMatch = await bcrypt.compare(currentPassword, user.password);
-        if (!isMatch) {
-            return res.status(400).json({ error: "Current password is incorrect" });
-        }
+        if (!isMatch) return res.status(400).json({ error: "Current password is incorrect" });
 
-        // Hash new password
-        const salt = await bcrypt.genSalt(10);
-        user.password = await bcrypt.hash(newPassword, salt);
+        user.password = await bcrypt.hash(newPassword, 10);
         await user.save();
 
         res.json({ message: "Password updated successfully" });
@@ -377,4 +247,4 @@ router.put("/me/password", authMiddleware, async (req, res) => {
     }
 });
 
-module.exports = { router, authRouter };
+module.exports = { authRouter, router };

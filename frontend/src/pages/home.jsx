@@ -68,19 +68,19 @@ const Home = ({ setIsAuthenticated }) => {
   const fetchStats = async (token) => {
     try {
       const [movieResponse, tvResponse, animeResponse] = await Promise.all([
-        axios.get('https://s72-raphael-watchwise.onrender.com/api/profile/movies', {
+        axios.get('http://localhost:3000/api/profile/movies', {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
           }
         }),
-        axios.get('https://s72-raphael-watchwise.onrender.com/api/profile/tvshows', {
+        axios.get('http://localhost:3000/api/profile/tvshows', {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
           }
         }),
-        axios.get('https://s72-raphael-watchwise.onrender.com/api/profile/anime', {
+        axios.get('http://localhost:3000/api/profile/anime', {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -90,23 +90,24 @@ const Home = ({ setIsAuthenticated }) => {
 
       // Calculate stats from the responses
       const calculateStats = (items) => {
+        const validItems = items || [];
         return {
-          planToWatch: items.filter(item => item.watchStatus === WATCH_STATUS.NOT_STARTED).length,
-          inProgress: items.filter(item => item.watchStatus === WATCH_STATUS.IN_PROGRESS).length,
-          watched: items.filter(item => item.watchStatus === WATCH_STATUS.COMPLETED).length
+          planToWatch: validItems.filter(item => item.watchStatus === WATCH_STATUS.NOT_STARTED).length,
+          inProgress: validItems.filter(item => item.watchStatus === WATCH_STATUS.IN_PROGRESS).length,
+          watched: validItems.filter(item => item.watchStatus === WATCH_STATUS.COMPLETED).length
         };
       };
 
       setStats({
-        movies: calculateStats(movieResponse.data.movies),
-        tvShows: calculateStats(tvResponse.data.tvShows),
-        anime: calculateStats(animeResponse.data.anime)
+        movies: calculateStats(movieResponse.data?.movies),
+        tvShows: calculateStats(tvResponse.data?.tvShows),
+        anime: calculateStats(animeResponse.data?.anime)
       });
     } catch (error) {
       console.error('Error fetching stats:', error);
       if (error.response?.status === 401) {
         localStorage.removeItem('token');
-        navigate('/login');
+        navigate('/signup'); // Changed from '/login' to '/signup'
       }
     }
   };
@@ -117,28 +118,33 @@ const Home = ({ setIsAuthenticated }) => {
 
   useEffect(() => {
     const token = localStorage.getItem('token');
+    console.log('Token check:', token ? 'Token exists' : 'No token found');
+    
     if (!token) {
-      navigate('/login');
+      console.log('No token found, redirecting to signup...');
+      navigate('/signup'); // Changed from '/login' to '/signup'
       return;
     }
 
     const fetchUserContent = async () => {
       try {
+        console.log('Starting API calls with token:', token ? 'present' : 'missing');
         setLoading(prev => ({ ...prev, movies: true }));
+        
         const [movieResponse, tvResponse, animeResponse] = await Promise.all([
-          axios.get('https://s72-raphael-watchwise.onrender.com/api/profile/movies', {
+          axios.get('http://localhost:3000/api/profile/movies', {
             headers: {
               'Authorization': `Bearer ${token}`,
               'Content-Type': 'application/json'
             }
           }),
-          axios.get('https://s72-raphael-watchwise.onrender.com/api/profile/tvshows', {
+          axios.get('http://localhost:3000/api/profile/tvshows', {
             headers: {
               'Authorization': `Bearer ${token}`,
               'Content-Type': 'application/json'
             }
           }),
-          axios.get('https://s72-raphael-watchwise.onrender.com/api/profile/anime', {
+          axios.get('http://localhost:3000/api/profile/anime', {
             headers: {
               'Authorization': `Bearer ${token}`,
               'Content-Type': 'application/json'
@@ -146,9 +152,16 @@ const Home = ({ setIsAuthenticated }) => {
           })
         ]);
 
+        console.log('API responses received:', {
+          movies: movieResponse.data,
+          tvShows: tvResponse.data,
+          anime: animeResponse.data
+        });
+
         // Group movies by watch status
         const groupedMovies = {};
-        movieResponse.data.movies.forEach(movie => {
+        const movies = movieResponse.data?.movies || [];
+        movies.forEach(movie => {
           if (movie.watchStatus !== WATCH_STATUS.NOT_PLANNING) {
             if (!groupedMovies[movie.watchStatus]) {
               groupedMovies[movie.watchStatus] = [];
@@ -159,7 +172,8 @@ const Home = ({ setIsAuthenticated }) => {
 
         // Group TV shows by watch status
         const groupedTvShows = {};
-        tvResponse.data.tvShows.forEach(show => {
+        const tvShows = tvResponse.data?.tvShows || [];
+        tvShows.forEach(show => {
           if (show.watchStatus !== WATCH_STATUS.NOT_PLANNING) {
             if (!groupedTvShows[show.watchStatus]) {
               groupedTvShows[show.watchStatus] = [];
@@ -170,7 +184,8 @@ const Home = ({ setIsAuthenticated }) => {
 
         // Group anime by watch status
         const groupedAnime = {};
-        animeResponse.data.anime.forEach(item => {
+        const animeItems = animeResponse.data?.anime || [];
+        animeItems.forEach(item => {
           if (item.watchStatus !== WATCH_STATUS.NOT_PLANNING) {
             if (!groupedAnime[item.watchStatus]) {
               groupedAnime[item.watchStatus] = [];
@@ -192,28 +207,42 @@ const Home = ({ setIsAuthenticated }) => {
 
         // Calculate and set stats
         const calculateStats = (items) => {
+          const validItems = items || [];
           return {
-            planToWatch: items.filter(item => item.watchStatus === WATCH_STATUS.NOT_STARTED).length,
-            inProgress: items.filter(item => item.watchStatus === WATCH_STATUS.IN_PROGRESS).length,
-            watched: items.filter(item => item.watchStatus === WATCH_STATUS.COMPLETED).length
+            planToWatch: validItems.filter(item => item.watchStatus === WATCH_STATUS.NOT_STARTED).length,
+            inProgress: validItems.filter(item => item.watchStatus === WATCH_STATUS.IN_PROGRESS).length,
+            watched: validItems.filter(item => item.watchStatus === WATCH_STATUS.COMPLETED).length
           };
         };
 
         setStats({
-          movies: calculateStats(movieResponse.data.movies),
-          tvShows: calculateStats(tvResponse.data.tvShows),
-          anime: calculateStats(animeResponse.data.anime)
+          movies: calculateStats(movies),
+          tvShows: calculateStats(tvShows),
+          anime: calculateStats(animeItems)
         });
         
         setError(null);
       } catch (error) {
         console.error('Error fetching user content:', error);
-        if (error.response?.status === 401) {
-          localStorage.removeItem('token');
-          navigate('/login');
-        } else {
-          setError('Failed to fetch your content. Please try again later.');
-        }
+        console.log('Error details:', {
+          status: error.response?.status,
+          data: error.response?.data,
+          message: error.message,
+          url: error.config?.url
+        });
+        
+        // Always redirect to signup on any API error for debugging
+        console.log('API error occurred, redirecting to signup...');
+        localStorage.removeItem('token');
+        navigate('/signup');
+        
+        // Original logic kept for reference
+        // if (error.response?.status === 401) {
+        //   localStorage.removeItem('token');
+        //   navigate('/signup');
+        // } else {
+        //   setError('Failed to fetch your content. Please try again later.');
+        // }
       } finally {
         setLoading({
           movies: false,

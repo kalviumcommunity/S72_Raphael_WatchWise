@@ -112,7 +112,7 @@ const TvShowDetails = () => {
         return null;
       }
 
-      const response = await axios.get(`https://s72-raphael-watchwise.onrender.com/api/profile/tvshows/${id}`, {
+      const response = await axios.get(`http://localhost:3000/api/profile/tvshows/${id}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -152,7 +152,7 @@ const TvShowDetails = () => {
         posterPath: show.poster_path || ''
       };
 
-      const response = await axios.put(`https://s72-raphael-watchwise.onrender.com/api/profile/tvshows/${id}`, showData, {
+      const response = await axios.put(`http://localhost:3000/api/profile/tvshows/${id}`, showData, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
