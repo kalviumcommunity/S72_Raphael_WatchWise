@@ -68,19 +68,19 @@ const Home = ({ setIsAuthenticated }) => {
   const fetchStats = async (token) => {
     try {
       const [movieResponse, tvResponse, animeResponse] = await Promise.all([
-        axios.get('http://localhost:3000/api/profile/movies', {
+        axios.get('https://s72-raphael-watchwise.onrender.com/api/profile/movies', {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
           }
         }),
-        axios.get('http://localhost:3000/api/profile/tvshows', {
+        axios.get('https://s72-raphael-watchwise.onrender.com/api/profile/tvshows', {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
           }
         }),
-        axios.get('http://localhost:3000/api/profile/anime', {
+        axios.get('https://s72-raphael-watchwise.onrender.com/api/profile/anime', {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -132,19 +132,19 @@ const Home = ({ setIsAuthenticated }) => {
         setLoading(prev => ({ ...prev, movies: true }));
         
         const [movieResponse, tvResponse, animeResponse] = await Promise.all([
-          axios.get('http://localhost:3000/api/profile/movies', {
+          axios.get('https://s72-raphael-watchwise.onrender.com/api/profile/movies', {
             headers: {
               'Authorization': `Bearer ${token}`,
               'Content-Type': 'application/json'
             }
           }),
-          axios.get('http://localhost:3000/api/profile/tvshows', {
+          axios.get('https://s72-raphael-watchwise.onrender.com/api/profile/tvshows', {
             headers: {
               'Authorization': `Bearer ${token}`,
               'Content-Type': 'application/json'
             }
           }),
-          axios.get('http://localhost:3000/api/profile/anime', {
+          axios.get('https://s72-raphael-watchwise.onrender.com/api/profile/anime', {
             headers: {
               'Authorization': `Bearer ${token}`,
               'Content-Type': 'application/json'

@@ -102,7 +102,7 @@ const AnimeDetails = () => {
         return null;
       }
 
-      const response = await axios.get(`http://localhost:3000/api/profile/anime/${id}`, {
+      const response = await axios.get(`https://s72-raphael-watchwise.onrender.com/api/profile/anime/${id}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -152,7 +152,7 @@ const AnimeDetails = () => {
         posterPath: anime.images.jpg.large_image_url || ''
       };
 
-      const response = await axios.put(`http://localhost:3000/api/profile/anime/${id}`, animeData, {
+      const response = await axios.put(`https://s72-raphael-watchwise.onrender.com/api/profile/anime/${id}`, animeData, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'

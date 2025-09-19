@@ -100,5 +100,5 @@ Contributions are welcome! If you'd like to contribute:
 
 WatchWise is now Live!!
 Check it out here -
-Backend Deployment: http://localhost:3000
+Backend Deployment: https://s72-raphael-watchwise.onrender.com
 Frontend Deployment: https://watchwisely.netlify.app/

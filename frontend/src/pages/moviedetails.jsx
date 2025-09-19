@@ -156,7 +156,7 @@ const MovieDetails = () => {
         return null;
       }
 
-      const response = await axios.get(`http://localhost:3000/api/profile/movies/${id}`, {
+      const response = await axios.get(`https://s72-raphael-watchwise.onrender.com/api/profile/movies/${id}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -202,7 +202,7 @@ const MovieDetails = () => {
 
       console.log('Sending update request:', movieData);
       
-      const response = await axios.put(`http://localhost:3000/api/profile/movies/${id}`, movieData, {
+      const response = await axios.put(`https://s72-raphael-watchwise.onrender.com/api/profile/movies/${id}`, movieData, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'

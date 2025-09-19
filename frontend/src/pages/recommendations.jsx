@@ -92,13 +92,13 @@ const Recommendations = () => {
         try {
             setLoading(true);
             const [movieResponse, tvResponse, animeResponse] = await Promise.all([
-                axios.get("http://localhost:3000/api/profile/movies", {
+                axios.get("https://s72-raphael-watchwise.onrender.com/api/profile/movies", {
                     headers: { 'Authorization': `Bearer ${token}` }
                 }),
-                axios.get("http://localhost:3000/api/profile/tvshows", {
+                axios.get("https://s72-raphael-watchwise.onrender.com/api/profile/tvshows", {
                     headers: { 'Authorization': `Bearer ${token}` }
                 }),
-                axios.get("http://localhost:3000/api/profile/anime", {
+                axios.get("https://s72-raphael-watchwise.onrender.com/api/profile/anime", {
                     headers: { 'Authorization': `Bearer ${token}` }
                 })
             ]);
