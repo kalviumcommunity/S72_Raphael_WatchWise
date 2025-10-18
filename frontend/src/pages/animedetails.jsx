@@ -45,6 +45,8 @@ const AnimeDetails = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [similarAnime, setSimilarAnime] = useState([]);
   const [trailerLoading, setTrailerLoading] = useState(true);
+  const [loadingSimilar, setLoadingSimilar] = useState(false);
+  const [displayedCount, setDisplayedCount] = useState(4);
 
   useEffect(() => {
     setWatchStatus(WATCH_STATUS.NOT_PLANNING);
@@ -53,6 +55,7 @@ const AnimeDetails = () => {
     setUpdateStatus('');
     setTrailerLoading(true);
     setSimilarAnime([]);
+    setDisplayedCount(4);
 
     const token = localStorage.getItem('token');
     setIsAuthenticated(!!token);
@@ -87,12 +90,26 @@ const AnimeDetails = () => {
   const fetchSimilarAnime = async (animeId) => {
     try {
       const response = await axios.get(`${ANIME_DETAILS_URL}${animeId}/recommendations`);
-      // Limit to 6 recommendations
-      setSimilarAnime(response.data.data.slice(0, 6));
+      setSimilarAnime(response.data.data);
     } catch (error) {
       console.error("Error fetching similar anime:", error);
     }
   };
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.innerHeight + document.documentElement.scrollTop >= document.documentElement.offsetHeight - 100 && displayedCount < similarAnime.length && !loadingSimilar) {
+        setLoadingSimilar(true);
+        setTimeout(() => {
+          setDisplayedCount(prev => Math.min(prev + 4, similarAnime.length));
+          setLoadingSimilar(false);
+        }, 300);
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [displayedCount, similarAnime.length, loadingSimilar]);
 
   const fetchUserAnimeStatus = async () => {
     try {
@@ -109,7 +126,6 @@ const AnimeDetails = () => {
         }
       });
 
-      // If the response is null, it means this is a new anime for the user
       if (response.data === null) {
         return {
           watchStatus: WATCH_STATUS.NOT_PLANNING,
@@ -209,175 +225,201 @@ const AnimeDetails = () => {
     return config ? config.color : 'bg-gray-200';
   };
 
-  if (loading) return <p className="text-center mt-10 text-gray-500">Loading...</p>;
+  if (loading) return <p className="text-center mt-10 text-white">Loading...</p>;
   if (!anime) return <p className="text-center mt-10 text-red-500">Anime not found!</p>;
 
   return (
-    <div className="max-w-4xl mx-auto mt-10 p-6 bg-grey-100 shadow-lg rounded-lg mb-10">
-      <Navbar />
+    <div className="bg-[#151a24] min-h-screen w-full">
+      <div className="max-w-4xl mx-auto mt-20 p-6">
+        <Navbar />
 
-      <div className="flex flex-col md:flex-row items-center md:items-start">
-        <img
-          src={anime.images.jpg.large_image_url}
-          alt={anime.title}
-          className="w-80 rounded-lg shadow-md"
-        />
-        <div className="md:ml-6 mt-4 md:mt-0 flex-1">
-          <h1 className="text-3xl font-bold">{anime.title}</h1>
-          <p className="text-gray-500 mt-2">📅 {new Date(anime.aired.from).getFullYear()}</p>
-          <p className="mt-4">{anime.synopsis}</p>
-          <p className="mt-4 font-semibold">⭐ Rating: {anime.score?.toFixed(1) || 'N/A'}/10</p>
-          <p className="mt-2 text-gray-700">🎭 Genres: {anime.genres.map(g => g.name).join(", ")}</p>
-          <p className="mt-2 text-gray-700">📺 Episodes: {anime.episodes || 'Unknown'}</p>
-          <p className="mt-2 text-gray-700">⏱️ Duration: {anime.duration}</p>
-          <p className="mt-2 text-gray-700">🎬 Status: {anime.status}</p>
+        <div className="backdrop-blur-md bg-white/10 shadow-lg rounded-lg p-6 w-full">
+          <div className="flex flex-col md:flex-row flex-wrap items-center md:items-start w-full">
+            <img
+              src={anime.images.jpg.large_image_url}
+              alt={anime.title}
+              className="w-80 max-w-full rounded-lg shadow-md"
+            />
+            <div className="md:ml-6 mt-4 md:mt-0 flex-1 w-full md:w-auto">
+              <h1 className="text-3xl font-bold text-white">{anime.title}</h1>
+              <p className="text-gray-300 mt-2">📅 {new Date(anime.aired.from).getFullYear()}</p>
+              <p className="mt-4 text-gray-200">{anime.synopsis}</p>
+              <p className="mt-4 font-semibold text-white">⭐ Rating: {anime.score?.toFixed(1) || 'N/A'}/10</p>
+              <p className="mt-2 text-gray-300">🎭 Genres: {anime.genres.map(g => g.name).join(", ")}</p>
+              <p className="mt-2 text-gray-300">📺 Episodes: {anime.episodes || 'Unknown'}</p>
+              <p className="mt-2 text-gray-300">⏱️ Duration: {anime.duration}</p>
+              <p className="mt-2 text-gray-300">🎬 Status: {anime.status}</p>
 
-          {!isAuthenticated ? (
-            <div className="mt-6 p-4 bg-blue-50 text-blue-700 rounded-lg">
-              <p>Please <button 
-                onClick={() => navigate('/login')}
-                className="text-blue-500 hover:text-blue-700 font-semibold"
-              >
-                log in
-              </button> to track this anime and rate it.</p>
-            </div>
-          ) : (
-            <>
-              {/* Watch Status Buttons */}
-              <div className="mt-6">
-                <h3 className="text-lg font-semibold mb-2">Watch Status</h3>
-                <div className="flex gap-2 w-full px-1">
-                  {Object.entries(WATCH_STATUS).map(([key, value]) => (
+              {!isAuthenticated ? (
+                <div className="mt-6 p-4 backdrop-blur-md bg-blue-500/20 text-blue-200 rounded-lg border border-blue-400/30 w-full">
+                  <p>
+                    Please{" "}
                     <button
-                      key={key}
-                      onClick={() => handleWatchStatusChange(value)}
-                      className={`
-                        px-3 py-2 rounded-lg transition-all duration-300 whitespace-nowrap flex-1
-                        ${watchStatus === value
-                          ? `${WATCH_STATUS_STYLES[value]} text-white transform scale-105`
-                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                        }
-                      `}
+                      onClick={() => navigate('/login')}
+                      className="text-blue-300 hover:text-blue-100 font-semibold"
                     >
-                      {WATCH_STATUS_LABELS[value]}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Rating Buttons - Only show for watched or in progress */}
-              {(watchStatus === WATCH_STATUS.COMPLETED || watchStatus === WATCH_STATUS.IN_PROGRESS) && (
-                <div className="mt-6">
-                  <h3 className="text-lg font-semibold mb-2">Your Rating</h3>
-                  <div className="flex w-full max-w-md">
-                    {RATING_CONFIG.map((config, index) => (
-                      <button
-                        key={config.value}
-                        onClick={() => handleRatingChange(config.value)}
-                        className={`
-                          flex-1 h-12 flex items-center justify-center
-                          transition-all duration-300 relative
-                          ${index === 0 ? 'rounded-l-lg' : ''}
-                          ${index === RATING_CONFIG.length - 1 ? 'rounded-r-lg' : ''}
-                          ${rating === config.value 
-                            ? `${config.color} text-white transform scale-y-105 z-10 shadow-md` 
-                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                          }
-                          ${index > 0 ? '-ml-px' : ''} // Create joined effect
-                        `}
-                      >
-                        <span className="text-2xl">{config.emoji}</span>
-                      </button>
-                    ))}
-                  </div>
-                  <p className="mt-2 text-sm text-gray-500 flex items-center gap-2">
-                    {rating > 0 ? (
-                      <>
-                        <span>Your rating: {getRatingEmoji(rating)}</span>
-                        <span className={`
-                          px-2 py-1 rounded text-white text-xs
-                          ${getRatingColor(rating)}
-                        `}>
-                          {rating/2}/5
-                        </span>
-                      </>
-                    ) : "Not rated yet"}
+                      log in
+                    </button>{" "}
+                    to track this anime and rate it.
                   </p>
                 </div>
-              )}
+              ) : (
+                <>
+                  {/* Watch Status Buttons */}
+                  <div className="mt-6 w-full">
+                    <h3 className="text-lg font-semibold mb-2 text-white">Watch Status</h3>
+                    <div className="flex gap-2 w-full px-1 flex-wrap">
+                      {Object.entries(WATCH_STATUS).map(([key, value]) => (
+                        <button
+                          key={key}
+                          onClick={() => handleWatchStatusChange(value)}
+                          className={`
+                            px-3 py-2 rounded-lg transition-all duration-300 whitespace-nowrap flex-1
+                            ${watchStatus === value
+                              ? `${WATCH_STATUS_STYLES[value]} text-white transform scale-105`
+                              : 'backdrop-blur-md bg-white/10 text-white hover:bg-white/20 border border-white/20'
+                            }
+                          `}
+                        >
+                          {WATCH_STATUS_LABELS[value]}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
 
-              {/* Update Status Message */}
-              {updateStatus && (
-                <div className={`mt-4 p-2 rounded ${
-                  updateStatus.includes('failed') ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
-                }`}>
-                  {updateStatus}
-                </div>
+                  {/* Rating Buttons - Only show for watched or in progress */}
+                  {(watchStatus === WATCH_STATUS.COMPLETED || watchStatus === WATCH_STATUS.IN_PROGRESS) && (
+                    <div className="mt-6 w-full">
+                      <h3 className="text-lg font-semibold mb-2 text-white">Your Rating</h3>
+                      <div className="flex w-full max-w-md flex-wrap">
+                        {RATING_CONFIG.map((config, index) => (
+                          <button
+                            key={config.value}
+                            onClick={() => handleRatingChange(config.value)}
+                            className={`
+                              flex-1 h-12 flex items-center justify-center
+                              transition-all duration-300 relative
+                              ${index === 0 ? 'rounded-l-lg' : ''}
+                              ${index === RATING_CONFIG.length - 1 ? 'rounded-r-lg' : ''}
+                              ${rating === config.value 
+                                ? `${config.color} text-white transform scale-y-105 z-10 shadow-md` 
+                                : 'backdrop-blur-md bg-white/10 text-white hover:bg-white/20 border border-white/20'
+                              }
+                              ${index > 0 ? '-ml-px' : ''}
+                            `}
+                          >
+                            <span className="text-2xl">{config.emoji}</span>
+                          </button>
+                        ))}
+                      </div>
+                      <p className="mt-2 text-sm text-gray-300 flex items-center gap-2">
+                        {rating > 0 ? (
+                          <>
+                            <span>Your rating: {getRatingEmoji(rating)}</span>
+                            <span className={`
+                              px-2 py-1 rounded text-white text-xs
+                              ${getRatingColor(rating)}
+                            `}>
+                              {rating/2}/5
+                            </span>
+                          </>
+                        ) : "Not rated yet"}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Update Status Message */}
+                  {updateStatus && (
+                    <div className={`
+                      mt-4 p-2 rounded backdrop-blur-md w-full
+                      ${updateStatus.includes('failed') 
+                        ? 'bg-red-500/20 text-red-200 border border-red-400/30' 
+                        : 'bg-green-500/20 text-green-200 border border-green-400/30'}
+                    `}>
+                      {updateStatus}
+                    </div>
+                  )}
+                </>
               )}
-            </>
-          )}
+            </div>
+          </div>
+
+          {/* Trailer Section */}
+          <div className="mt-8">
+            <h2 className="text-2xl font-bold mb-4 text-white">Trailer</h2>
+            {trailerLoading ? (
+              <div className="h-64 backdrop-blur-md bg-white/10 rounded-lg flex items-center justify-center border border-white/20">
+                <p className="text-gray-300">Loading trailer...</p>
+              </div>
+            ) : anime.trailer?.embed_url ? (
+              <div className="relative w-full overflow-hidden rounded-lg shadow-md" style={{ paddingTop: '56.25%' }}>
+                <iframe
+                  src={anime.trailer.embed_url}
+                  className="absolute top-0 left-0 w-full h-full"
+                  allowFullScreen
+                  title={`${anime.title} trailer`}
+                ></iframe>
+              </div>
+            ) : (
+              <div className="h-64 backdrop-blur-md bg-white/10 rounded-lg flex items-center justify-center border border-white/20">
+                <p className="text-gray-300">No trailer available</p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Trailer Section */}
-      <div className="mt-12">
-        <h2 className="text-2xl font-bold mb-4">Trailer</h2>
-        {trailerLoading ? (
-          <div className="h-64 bg-gray-200 rounded-lg flex items-center justify-center">
-            <p className="text-gray-500">Loading trailer...</p>
-          </div>
-        ) : anime.trailer?.embed_url ? (
-          <div className="relative pb-9 h-0" style={{ paddingBottom: '56.25%' }}> {/* 16:9 Aspect Ratio */}
-            <iframe
-              src={anime.trailer.embed_url}
-              className="absolute top-0 left-0 w-full h-full rounded-lg shadow-md"
-              allowFullScreen
-              title={`${anime.title} trailer`}
-            ></iframe>
-          </div>
-        ) : (
-          <div className="h-64 bg-gray-100 rounded-lg flex items-center justify-center">
-            <p className="text-gray-500">No trailer available</p>
-          </div>
-        )}
-      </div>
-
-      {/* Similar Anime Section */}
-      <div className="mt-12">
-        <h2 className="text-2xl font-bold mb-4">Similar Anime</h2>
-        {similarAnime.length > 0 ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4">
-            {similarAnime.map((recommendation) => (
-              <Link 
-                to={`/anime/${recommendation.entry.mal_id}`} 
-                key={recommendation.entry.mal_id}
-                className="block transition-transform hover:scale-105"
-              >
-                <div className="rounded-lg overflow-hidden shadow-md bg-gray-200">
-                  <img
-                    src={recommendation.entry.images.jpg.image_url}
-                    alt={recommendation.entry.title}
-                    className="w-full h-40 object-cover"
-                    onError={(e) => {
-                      e.target.onerror = null;
-                      e.target.src = 'https://via.placeholder.com/120x180?text=No+Image';
-                    }}
-                  />
-                  <div className="p-2">
-                    <p className="text-sm font-medium line-clamp-2" title={recommendation.entry.title}>
-                      {recommendation.entry.title}
-                    </p>
+      {/* Similar Anime Section - Outside main container, full width */}
+      {similarAnime.length > 0 && (
+        <div className="w-full py-12">
+          <div className="max-w-7xl mx-auto px-6">
+            <div className="mb-8 backdrop-blur-md bg-white/10 p-4 rounded-lg shadow-md w-[300px] mx-auto border border-white/20">
+              <h2 className="text-3xl font-bold text-center text-white">Similar Anime</h2>
+            </div>
+            <div className="grid grid-cols-4 gap-6">
+              {similarAnime.slice(0, displayedCount).map((recommendation) => (
+                <Link 
+                  to={`/anime/${recommendation.entry.mal_id}`} 
+                  key={recommendation.entry.mal_id}
+                  className="block transition-transform hover:scale-105"
+                >
+                  <div className="rounded-lg overflow-hidden shadow-md backdrop-blur-md bg-white/10 border border-white/20 h-full flex flex-col">
+                    <img
+                      src={recommendation.entry.images.jpg.large_image_url}
+                      alt={recommendation.entry.title}
+                      className="w-full h-80 object-cover"
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = 'https://via.placeholder.com/200x300?text=No+Image';
+                      }}
+                    />
+                    <div className="p-3 flex-1 flex flex-col">
+                      <p className="text-base font-medium line-clamp-3 text-white" title={recommendation.entry.title}>
+                        {recommendation.entry.title}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              </Link>
-            ))}
+                </Link>
+              ))}
+            </div>
+            
+            {/* Loading indicator */}
+            {loadingSimilar && (
+              <div className="flex justify-center items-center py-8 mt-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+                <span className="ml-2 text-gray-300">Loading more anime...</span>
+              </div>
+            )}
+            
+            {/* End of results indicator */}
+            {!loadingSimilar && displayedCount >= similarAnime.length && similarAnime.length > 0 && (
+              <div className="text-center py-8 text-gray-400">
+                No more anime to load
+              </div>
+            )}
           </div>
-        ) : (
-          <div className="h-24 bg-gray-100 rounded-lg flex items-center justify-center">
-            <p className="text-gray-500">No similar anime found</p>
-          </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 };

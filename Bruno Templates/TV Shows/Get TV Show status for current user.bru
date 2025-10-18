@@ -1,0 +1,15 @@
+meta {
+  name: Get TV Show status for current user
+  type: http
+  seq: 1
+}
+
+get {
+  url: http://localhost:3000/controller/tvshow/:showId
+  body: none
+  auth: none
+}
+
+params:path {
+  showId: 
+}

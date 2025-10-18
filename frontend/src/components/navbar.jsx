@@ -196,16 +196,19 @@ const Navbar = () => {
   };
 
   return (
-    <nav className="fixed top-0 left-0 w-full bg-white/10 backdrop-blur-lg border-b border-white/20 shadow-md z-50">
+    <nav className="fixed top-0 left-0 w-full bg-[#151a24] backdrop-blur-lg border-b border-white/20 shadow-md z-50">
       <div className="container mx-auto px-6 py-3">
         <div className="flex justify-between items-center">
+          <div className="flex items-center gap-4">
+          <img src="https://t4.ftcdn.net/jpg/06/89/35/41/360_F_689354146_zTRjLu14CB4OYuENFrgL9Aditp2OK3p7.jpg" class="w-12 h-12 rounded-xl" />
           {/* Logo */}
           <button 
             onClick={() => navigate("/")} 
-            className="text-black text-2xl font-bold tracking-wide focus:outline-none"
-          >
+            className="text-white text-2xl font-bold tracking-wide focus:outline-none"
+            >
             WatchWise
           </button>
+          </div>
 
           {/* Search Bar */}
           <div ref={searchRef} className="relative max-w-xl w-full mx-4 hidden md:block">
@@ -216,7 +219,7 @@ const Navbar = () => {
               onKeyPress={handleKeyPress}
               onFocus={handleFocus}
               placeholder="Search for movies, TV shows, or anime..."
-              className="w-full px-4 py-2 pl-10 rounded-lg border border-gray-300
+              className="w-full px-4 py-2 pl-10 rounded-lg bg-[#2c3444] border border-gray-300
                      focus:ring-2 focus:ring-red-500 focus:border-red-500
                      focus:outline-none shadow-sm transition-shadow duration-300
                      bg-white/80 backdrop-blur-sm"
@@ -351,7 +354,7 @@ const Navbar = () => {
   <li>
     <button 
       onClick={() => navigate("/home")} 
-      className="text-gray-700 hover:text-blue-600 font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-200 focus:ring-opacity-50 rounded-lg px-3 py-2 hover:bg-blue-50 transform hover:scale-105"
+      className="text-white hover:text-blue-600 font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-200 focus:ring-opacity-50 rounded-lg px-3 py-2 hover:bg-blue-50 transform hover:scale-105"
     >
       Home
     </button>
@@ -359,7 +362,7 @@ const Navbar = () => {
   <li>
     <button 
       onClick={() => navigate("/recommendations")} 
-      className="text-gray-700 hover:text-blue-600 font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-200 focus:ring-opacity-50 rounded-lg px-3 py-2 hover:bg-blue-50 transform hover:scale-105"
+      className="text-white hover:text-blue-600 font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-200 focus:ring-opacity-50 rounded-lg px-3 py-2 hover:bg-blue-50 transform hover:scale-105"
     >
       Recommendations
     </button>
@@ -367,7 +370,7 @@ const Navbar = () => {
   <li ref={genreRef} className="relative">
     <button 
       onClick={() => setShowGenres(!showGenres)}
-      className="text-gray-700 hover:text-blue-600 font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-200 focus:ring-opacity-50 rounded-lg px-3 py-2 hover:bg-blue-50 transform hover:scale-105 flex items-center group"
+      className="text-white hover:text-blue-600 font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-200 focus:ring-opacity-50 rounded-lg px-3 py-2 hover:bg-blue-50 transform hover:scale-105 flex items-center group"
     >
       Genres
       <svg 

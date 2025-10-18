@@ -46,7 +46,7 @@ const Login = ({ setIsAuthenticated }) => {
     };
 
     return (
-        <>
+        <Box sx={{ backgroundColor: '#151a24', minHeight: '100vh' }}>
             <Navbar />
             <Container component="main" maxWidth="xs">
                 <Box
@@ -57,7 +57,7 @@ const Login = ({ setIsAuthenticated }) => {
                         alignItems: 'center',
                     }}
                 >
-                    <Typography component="h1" variant="h5" sx={{ mb: 3 }}>
+                    <Typography component="h1" variant="h5" sx={{ mb: 3, mt: 5, color: '#fff' }}>
                         Sign in
                     </Typography>
                     {error && (
@@ -78,6 +78,21 @@ const Login = ({ setIsAuthenticated }) => {
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             disabled={isLoading}
+                            sx={{
+                                '& .MuiOutlinedInput-root': {
+                                    color: '#fff',
+                                },
+                                '& .MuiOutlinedInput-notchedOutline': {
+                                    borderColor: '#666',
+                                },
+                                '& .MuiInputBase-input::placeholder': {
+                                    color: '#999',
+                                    opacity: 1,
+                                },
+                                '& .MuiFormLabel-root': {
+                                    color: '#bbb',
+                                },
+                            }}
                         />
                         <TextField
                             margin="normal"
@@ -91,6 +106,21 @@ const Login = ({ setIsAuthenticated }) => {
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             disabled={isLoading}
+                            sx={{
+                                '& .MuiOutlinedInput-root': {
+                                    color: '#fff',
+                                },
+                                '& .MuiOutlinedInput-notchedOutline': {
+                                    borderColor: '#666',
+                                },
+                                '& .MuiInputBase-input::placeholder': {
+                                    color: '#999',
+                                    opacity: 1,
+                                },
+                                '& .MuiFormLabel-root': {
+                                    color: '#bbb',
+                                },
+                            }}
                         />
                         <Button
                             type="submit"
@@ -105,7 +135,7 @@ const Login = ({ setIsAuthenticated }) => {
                             fullWidth
                             variant="text"
                             onClick={() => navigate('/signup')}
-                            sx={{ mt: 1 }}
+                            sx={{ mt: 1, color: '#fff' }}
                             disabled={isLoading}
                         >
                             Don't have an account? Sign up
@@ -113,7 +143,7 @@ const Login = ({ setIsAuthenticated }) => {
                     </Box>
                 </Box>
             </Container>
-        </>
+        </Box>
     );
 };
 

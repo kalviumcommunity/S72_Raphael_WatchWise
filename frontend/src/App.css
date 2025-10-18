@@ -5,6 +5,12 @@
   text-align: center;
 }
 
+body {
+  background-color: #0B0E19;
+  margin: 0;
+  padding: 0;
+}
+
 .logo {
   height: 6em;
   padding: 1.5em;
@@ -38,5 +44,5 @@
 }
 
 .read-the-docs {
-  color: #888;
+  color: #0B0E19;
 }

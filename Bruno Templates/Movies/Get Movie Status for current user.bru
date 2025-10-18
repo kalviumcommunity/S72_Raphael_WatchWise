@@ -1,0 +1,15 @@
+meta {
+  name: Get Movie Status for current user
+  type: http
+  seq: 1
+}
+
+get {
+  url: http://localhost:3000/controller/movie/:movieId
+  body: none
+  auth: none
+}
+
+params:path {
+  movieId: 
+}

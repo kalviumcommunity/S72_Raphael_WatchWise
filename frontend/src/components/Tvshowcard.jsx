@@ -6,7 +6,7 @@ const TvShowCard = ({ show }) => {
     
     return (
         <div 
-            className="group relative bg-white rounded-xl overflow-hidden cursor-pointer
+            className="group relative bg-[#2c3444] rounded-xl overflow-hidden cursor-pointer
                      w-full h-full transition-all duration-300
                      hover:shadow-[0_8px_30px_rgb(0,0,0,0.12)]
                      hover:-translate-y-1"
@@ -22,9 +22,9 @@ const TvShowCard = ({ show }) => {
             </div>
 
             {/* Content Container */}
-            <div className="absolute bottom-0 left-0 right-0 bg-white p-3">
+            <div className="absolute bottom-0 left-0 right-0 bg-[#2c3444] p-3">
                 {/* Title */}
-                <h3 className="font-semibold text-gray-800 text-sm line-clamp-1 mb-1">
+                <h3 className="font-semibold text-white text-sm line-clamp-1 mb-1">
                     {show.name}
                 </h3>
 
@@ -32,11 +32,11 @@ const TvShowCard = ({ show }) => {
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1">
                         <span className="text-yellow-500">⭐</span>
-                        <span className="text-sm text-gray-600">
+                        <span className="text-sm text-white">
                             {show.vote_average?.toFixed(1) || 'N/A'}
                         </span>
                     </div>
-                    <span className="text-xs text-gray-500">
+                    <span className="text-xs text-white">
                         {show.first_air_date?.split('-')[0] || 'TBA'}
                     </span>
                 </div>

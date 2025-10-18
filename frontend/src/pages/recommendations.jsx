@@ -361,11 +361,11 @@ const Recommendations = () => {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-gray-50">
+            <div className="min-h-screen bg-[#151a24]">
                 <Navbar />
                 <div className="max-w-7xl mx-auto px-4 py-8 pt-24">
                     <div className="flex justify-center items-center min-h-[400px]">
-                        <div className="animate-spin rounded-full h-12 w-12 border-4 border-red-500 border-t-transparent"></div>
+                        <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent"></div>
                     </div>
                 </div>
             </div>
@@ -374,7 +374,7 @@ const Recommendations = () => {
 
     if (error) {
         return (
-            <div className="min-h-screen bg-gray-50">
+            <div className="min-h-screen bg-[#151a24]">
                 <Navbar />
                 <div className="max-w-7xl mx-auto px-4 py-8 pt-24">
                     <div className="text-center text-red-500">{error}</div>
@@ -403,7 +403,7 @@ const Recommendations = () => {
                         </div>
                         {loadingMore && (
                             <div className="flex justify-center mt-8" ref={loadingRef}>
-                                <div className="animate-spin rounded-full h-8 w-8 border-4 border-red-500 border-t-transparent"></div>
+                                <div className="animate-spin rounded-full h-8 w-8 border-4 border-blue-500 border-t-transparent"></div>
                             </div>
                         )}
                     </div>
@@ -426,7 +426,7 @@ const Recommendations = () => {
                         </div>
                         {loadingMore && (
                             <div className="flex justify-center mt-8" ref={loadingRef}>
-                                <div className="animate-spin rounded-full h-8 w-8 border-4 border-red-500 border-t-transparent"></div>
+                                <div className="animate-spin rounded-full h-8 w-8 border-4 border-blue-500 border-t-transparent"></div>
                             </div>
                         )}
                     </div>
@@ -449,7 +449,7 @@ const Recommendations = () => {
                         </div>
                         {loadingMore && (
                             <div className="flex justify-center mt-8" ref={loadingRef}>
-                                <div className="animate-spin rounded-full h-8 w-8 border-4 border-red-500 border-t-transparent"></div>
+                                <div className="animate-spin rounded-full h-8 w-8 border-4 border-blue-500 border-t-transparent"></div>
                             </div>
                         )}
                     </div>
@@ -460,12 +460,12 @@ const Recommendations = () => {
     };
 
     return (
-        <div className="min-h-screen bg-gray-200">
+        <div className="min-h-screen bg-[#151a24]">
             <Navbar />
             <div className="max-w-7xl mx-auto px-4 py-8 pt-24">
-                <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-                    <h1 className="text-3xl font-bold mb-4">Your Personalized Recommendations</h1>
-                    <p className="text-gray-600">
+                <div className="backdrop-blur-md bg-white/10 rounded-lg shadow-md p-6 mb-8 border border-white/20">
+                    <h1 className="text-3xl font-bold mb-4 text-white">Your Personalized Recommendations</h1>
+                    <p className="text-gray-300">
                         Based on your watch history and ratings, we've analyzed your preferences to recommend content
                         you're likely to enjoy. Our AI considers factors like genres, themes, directors, and more to
                         provide tailored suggestions.
@@ -474,11 +474,11 @@ const Recommendations = () => {
 
                 {/* Tab Navigation */}
                 <div className="flex justify-center mb-8">
-                    <div className="flex space-x-2 bg-white rounded-lg p-1 shadow-sm">
+                    <div className="flex space-x-2 backdrop-blur-md bg-white/10 rounded-lg p-1 shadow-md border border-white/20">
                         <button
                             onClick={() => setActiveTab('movies')}
                             className={`px-4 py-2 rounded-md transition-colors ${
-                                activeTab === 'movies' ? 'bg-red-500 text-white' : 'text-gray-700 hover:bg-gray-100'
+                                activeTab === 'movies' ? 'bg-blue-500 text-white' : 'text-gray-300 hover:bg-white/20'
                             }`}
                         >
                             Movies
@@ -486,7 +486,7 @@ const Recommendations = () => {
                         <button
                             onClick={() => setActiveTab('tvShows')}
                             className={`px-4 py-2 rounded-md transition-colors ${
-                                activeTab === 'tvShows' ? 'bg-red-500 text-white' : 'text-gray-700 hover:bg-gray-100'
+                                activeTab === 'tvShows' ? 'bg-blue-500 text-white' : 'text-gray-300 hover:bg-white/20'
                             }`}
                         >
                             TV Shows
@@ -494,7 +494,7 @@ const Recommendations = () => {
                         <button
                             onClick={() => setActiveTab('anime')}
                             className={`px-4 py-2 rounded-md transition-colors ${
-                                activeTab === 'anime' ? 'bg-red-500 text-white' : 'text-gray-700 hover:bg-gray-100'
+                                activeTab === 'anime' ? 'bg-blue-500 text-white' : 'text-gray-300 hover:bg-white/20'
                             }`}
                         >
                             Anime
@@ -503,9 +503,9 @@ const Recommendations = () => {
                 </div>
 
                 {movies.length === 0 && tvShows.length === 0 && anime.length === 0 ? (
-                    <div className="bg-white rounded-lg shadow-md p-6 text-center">
-                        <h2 className="text-xl font-semibold mb-4">No Recommendations Yet</h2>
-                        <p className="text-gray-600">
+                    <div className="backdrop-blur-md bg-white/10 rounded-lg shadow-md p-6 text-center border border-white/20">
+                        <h2 className="text-xl font-semibold mb-4 text-white">No Recommendations Yet</h2>
+                        <p className="text-gray-300">
                             To get personalized recommendations, start watching and rating some content!
                         </p>
                     </div>

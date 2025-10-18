@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
 import Navbar from "../components/navbar";
+import MovieCard from "../components/Moviecard";
 
 const API_KEY = "0ace2af581de1152e9f38a6c477220b8";
 const TV_DETAILS_URL = "https://api.themoviedb.org/3/tv/";
@@ -47,6 +48,9 @@ const TvShowDetails = () => {
   const [trailers, setTrailers] = useState([]);
   const [selectedTrailer, setSelectedTrailer] = useState(null);
   const [similarShows, setSimilarShows] = useState([]);
+  const [loadingSimilar, setLoadingSimilar] = useState(false);
+  const [similarPage, setSimilarPage] = useState(1);
+  const [hasMoreSimilar, setHasMoreSimilar] = useState(true);
 
   useEffect(() => {
     // Reset states immediately when show ID changes
@@ -57,6 +61,9 @@ const TvShowDetails = () => {
     setTrailers([]);
     setSelectedTrailer(null);
     setSimilarShows([]);
+    setSimilarPage(1);
+    setHasMoreSimilar(true);
+    setLoadingSimilar(false);
 
     const token = localStorage.getItem('token');
     setIsAuthenticated(!!token);
@@ -81,11 +88,8 @@ const TvShowDetails = () => {
           setSelectedTrailer(showTrailers[0]);
         }
         
-        // Fetch similar TV shows
-        const similarShowsResponse = await axios.get(
-          `${TV_DETAILS_URL}${id}/similar?api_key=${API_KEY}`
-        );
-        setSimilarShows(similarShowsResponse.data.results.slice(0, 12));
+        // Fetch initial similar TV shows
+        await fetchSimilarShows(1, true);
         
         if (token) {
           const userStatusResponse = await fetchUserTvShowStatus();
@@ -103,6 +107,43 @@ const TvShowDetails = () => {
 
     fetchTvShowDetails();
   }, [id]);
+
+  const fetchSimilarShows = async (page = 1, reset = false) => {
+    if (loadingSimilar) return;
+    
+    setLoadingSimilar(true);
+    try {
+      const response = await axios.get(
+        `${TV_DETAILS_URL}${id}/similar?api_key=${API_KEY}&page=${page}`
+      );
+      
+      const newShows = response.data.results;
+      
+      if (reset) {
+        setSimilarShows(newShows);
+      } else {
+        setSimilarShows(prev => [...prev, ...newShows]);
+      }
+      
+      setHasMoreSimilar(page < response.data.total_pages && newShows.length > 0);
+      setSimilarPage(page);
+    } catch (error) {
+      console.error("Error fetching similar TV shows:", error);
+    } finally {
+      setLoadingSimilar(false);
+    }
+  };
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.innerHeight + document.documentElement.scrollTop >= document.documentElement.offsetHeight - 100 && hasMoreSimilar && !loadingSimilar) {
+        fetchSimilarShows(similarPage + 1, false);
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [hasMoreSimilar, loadingSimilar, similarPage, id]);
 
   const fetchUserTvShowStatus = async () => {
     try {
@@ -213,160 +254,174 @@ const TvShowDetails = () => {
     navigate(`/tv/${showId}`);
   };
 
-  if (loading) return <p className="text-center mt-10 text-gray-500">Loading...</p>;
+  if (loading) return <p className="text-center mt-10 text-white">Loading...</p>;
   if (!show) return <p className="text-center mt-10 text-red-500">TV show not found!</p>;
 
   return (
-    <div className="max-w-4xl mx-auto mt-10 p-6 bg-gray-50 shadow-lg rounded-lg">
-      <Navbar />
+    <div className="bg-[#151a24] min-h-screen w-full">
+      <div className="max-w-4xl mx-auto mt-20 p-6">
+        <Navbar />
 
-      <div className="flex flex-col md:flex-row items-center md:items-start">
-        <img
-          src={`https://image.tmdb.org/t/p/w500${show.poster_path}`}
-          alt={show.name}
-          className="w-80 rounded-lg shadow-md"
-        />
-        <div className="md:ml-6 mt-4 md:mt-0 flex-1">
-          <h1 className="text-3xl font-bold">{show.name}</h1>
-          <p className="text-gray-500 mt-2">📅 {show.first_air_date}</p>
-          <p className="mt-4">{show.overview}</p>
-          <p className="mt-4 font-semibold">⭐ Rating: {show.vote_average.toFixed(1)}/10</p>
-          <p className="mt-2 text-gray-700">🎭 Genres: {show.genres.map(g => g.name).join(", ")}</p>
-          <p className="mt-2 text-gray-700">📺 Seasons: {show.number_of_seasons}</p>
-          <p className="mt-2 text-gray-700">🎬 Episodes: {show.number_of_episodes}</p>
+        <div className="backdrop-blur-md bg-white/10 shadow-lg rounded-lg p-6 w-full">
+          <div className="flex flex-col md:flex-row flex-wrap items-center md:items-start w-full">
+            <img
+              src={`https://image.tmdb.org/t/p/w500${show.poster_path}`}
+              alt={show.name}
+              className="w-80 max-w-full rounded-lg shadow-md"
+            />
+            <div className="md:ml-6 mt-4 md:mt-0 flex-1 w-full md:w-auto">
+              <h1 className="text-3xl font-bold text-white">{show.name}</h1>
+              <p className="text-gray-300 mt-2">📅 {show.first_air_date}</p>
+              <p className="mt-4 text-gray-200">{show.overview}</p>
+              <p className="mt-4 font-semibold text-white">⭐ Rating: {show.vote_average.toFixed(1)}/10</p>
+              <p className="mt-2 text-gray-300">🎭 Genres: {show.genres.map(g => g.name).join(", ")}</p>
+              <p className="mt-2 text-gray-300">📺 Seasons: {show.number_of_seasons}</p>
+              <p className="mt-2 text-gray-300">🎬 Episodes: {show.number_of_episodes}</p>
 
-          {!isAuthenticated ? (
-            <div className="mt-6 p-4 bg-blue-50 text-blue-700 rounded-lg">
-              <p>Please <button 
-                onClick={() => navigate('/login')}
-                className="text-blue-500 hover:text-blue-700 font-semibold"
-              >
-                log in
-              </button> to track this TV show and rate it.</p>
-            </div>
-          ) : (
-            <>
-              {/* Watch Status Buttons */}
-              <div className="mt-6">
-                <h3 className="text-lg font-semibold mb-2">Watch Status</h3>
-                <div className="flex gap-2 w-full px-1">
-                  {Object.entries(WATCH_STATUS).map(([key, value]) => (
+              {!isAuthenticated ? (
+                <div className="mt-6 p-4 backdrop-blur-md bg-blue-500/20 text-blue-200 rounded-lg border border-blue-400/30 w-full">
+                  <p>
+                    Please{" "}
                     <button
-                      key={key}
-                      onClick={() => handleWatchStatusChange(value)}
-                      className={`
-                        px-3 py-2 rounded-lg transition-all duration-300 whitespace-nowrap flex-1
-                        ${watchStatus === value
-                          ? `${WATCH_STATUS_STYLES[value]} text-white transform scale-105`
-                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                        }
-                      `}
+                      onClick={() => navigate('/login')}
+                      className="text-blue-500 hover:text-blue-100 font-semibold"
                     >
-                      {WATCH_STATUS_LABELS[value]}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Rating Buttons - Only show for watched or in progress */}
-              {(watchStatus === WATCH_STATUS.COMPLETED || watchStatus === WATCH_STATUS.IN_PROGRESS) && (
-                <div className="mt-6">
-                  <h3 className="text-lg font-semibold mb-2">Your Rating</h3>
-                  <div className="flex w-full max-w-md">
-                    {RATING_CONFIG.map((config, index) => (
-                      <button
-                        key={config.value}
-                        onClick={() => handleRatingChange(config.value)}
-                        className={`
-                          flex-1 h-12 flex items-center justify-center
-                          transition-all duration-300 relative
-                          ${index === 0 ? 'rounded-l-lg' : ''}
-                          ${index === RATING_CONFIG.length - 1 ? 'rounded-r-lg' : ''}
-                          ${rating === config.value 
-                            ? `${config.color} text-white transform scale-y-105 z-10 shadow-md` 
-                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                          }
-                          ${index > 0 ? '-ml-px' : ''} // Create joined effect
-                        `}
-                      >
-                        <span className="text-2xl">{config.emoji}</span>
-                      </button>
-                    ))}
-                  </div>
-                  <p className="mt-2 text-sm text-gray-500 flex items-center gap-2">
-                    {rating > 0 ? (
-                      <>
-                        <span>Your rating: {getRatingEmoji(rating)}</span>
-                        <span className={`
-                          px-2 py-1 rounded text-white text-xs
-                          ${getRatingColor(rating)}
-                        `}>
-                          {rating/2}/5
-                        </span>
-                      </>
-                    ) : "Not rated yet"}
+                      log in
+                    </button>{" "}
+                    to track this TV show and rate it.
                   </p>
                 </div>
-              )}
+              ) : (
+                <>
+                  {/* Watch Status Buttons */}
+                  <div className="mt-6 w-full">
+                    <h3 className="text-lg font-semibold mb-2 text-white">Watch Status</h3>
+                    <div className="flex gap-2 w-full px-1 flex-wrap">
+                      {Object.entries(WATCH_STATUS).map(([key, value]) => (
+                        <button
+                          key={key}
+                          onClick={() => handleWatchStatusChange(value)}
+                          className={`
+                            px-3 py-2 rounded-lg transition-all duration-300 whitespace-nowrap flex-1
+                            ${watchStatus === value
+                              ? `${WATCH_STATUS_STYLES[value]} text-white transform scale-105`
+                              : 'backdrop-blur-md bg-white/10 text-white hover:bg-white/20 border border-white/20'
+                            }
+                          `}
+                        >
+                          {WATCH_STATUS_LABELS[value]}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
 
-              {/* Update Status Message */}
-              {updateStatus && (
-                <div className={`mt-4 p-2 rounded ${
-                  updateStatus.includes('failed') ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
-                }`}>
-                  {updateStatus}
-                </div>
+                  {/* Rating Buttons - Only show for watched or in progress */}
+                  {(watchStatus === WATCH_STATUS.COMPLETED || watchStatus === WATCH_STATUS.IN_PROGRESS) && (
+                    <div className="mt-6 w-full">
+                      <h3 className="text-lg font-semibold mb-2 text-white">Your Rating</h3>
+                      <div className="flex w-full max-w-md flex-wrap">
+                        {RATING_CONFIG.map((config, index) => (
+                          <button
+                            key={config.value}
+                            onClick={() => handleRatingChange(config.value)}
+                            className={`
+                              flex-1 h-12 flex items-center justify-center
+                              transition-all duration-300 relative
+                              ${index === 0 ? 'rounded-l-lg' : ''}
+                              ${index === RATING_CONFIG.length - 1 ? 'rounded-r-lg' : ''}
+                              ${rating === config.value 
+                                ? `${config.color} text-white transform scale-y-105 z-10 shadow-md` 
+                                : 'backdrop-blur-md bg-white/10 text-white hover:bg-white/20 border border-white/20'
+                              }
+                              ${index > 0 ? '-ml-px' : ''}
+                            `}
+                          >
+                            <span className="text-2xl">{config.emoji}</span>
+                          </button>
+                        ))}
+                      </div>
+                      <p className="mt-2 text-sm text-gray-300 flex items-center gap-2">
+                        {rating > 0 ? (
+                          <>
+                            <span>Your rating: {getRatingEmoji(rating)}</span>
+                            <span className={`
+                              px-2 py-1 rounded text-white text-xs
+                              ${getRatingColor(rating)}
+                            `}>
+                              {rating/2}/5
+                            </span>
+                          </>
+                        ) : "Not rated yet"}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Update Status Message */}
+                  {updateStatus && (
+                    <div className={`
+                      mt-4 p-2 rounded backdrop-blur-md w-full
+                      ${updateStatus.includes('failed') 
+                        ? 'bg-red-500/20 text-red-200 border border-red-400/30' 
+                        : 'bg-green-500/20 text-green-200 border border-green-400/30'}
+                    `}>
+                      {updateStatus}
+                    </div>
+                  )}
+                </>
               )}
-            </>
+            </div>
+          </div>
+
+          {/* Embedded Trailer Section */}
+          {selectedTrailer && (
+            <div className="mt-8">
+              <h2 className="text-2xl font-bold mb-4 text-white">Trailer</h2>
+              <div className="relative w-full overflow-hidden rounded-lg shadow-md" style={{ paddingTop: '56.25%' }}>
+                <iframe 
+                  src={`https://www.youtube.com/embed/${selectedTrailer.key}`}
+                  title={selectedTrailer.name}
+                  className="absolute top-0 left-0 w-full h-full"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                ></iframe>
+              </div>
+            </div>
           )}
         </div>
       </div>
 
-      {/* Embedded Trailer Section */}
-      {selectedTrailer && (
-        <div className="mt-8">
-          <h2 className="text-2xl font-bold mb-4">Trailer</h2>
-          <div className="relative w-full overflow-hidden" style={{ paddingTop: '56.25%' }}>
-            <iframe 
-              src={`https://www.youtube.com/embed/${selectedTrailer.key}`}
-              title={selectedTrailer.name}
-              className="absolute top-0 left-0 w-full h-full rounded-lg shadow-md"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-            ></iframe>
-          </div>
-        </div>
-      )}
-
-      {/* Similar TV Shows Section with Horizontal Scroll */}
+      {/* Similar Shows Section - Outside main container, full width */}
       {similarShows.length > 0 && (
-        <div className="mt-12">
-          <h2 className="text-2xl font-bold mb-4">Similar Shows</h2>
-          <div className="overflow-x-auto">
-            <div className="flex space-x-4 pb-4 min-w-max">
+        <div className="w-full py-12">
+          <div className="max-w-7xl mx-auto px-6">
+            <div className="mb-8 backdrop-blur-md bg-white/10 p-4 rounded-lg shadow-md w-[300px] mx-auto border border-white/20">
+              <h2 className="text-3xl font-bold text-center text-white">Similar Shows</h2>
+            </div>
+            <div className="grid grid-cols-4 gap-6">
               {similarShows.map(show => (
-                <div 
-                  key={show.id}
-                  className="cursor-pointer flex-none w-32 md:w-40 transition hover:scale-105 rounded-xl bg-gray-200"
-                  onClick={() => handleSimilarShowClick(show.id)}
-                >
-                  <img
-                    src={show.poster_path 
-                      ? `https://image.tmdb.org/t/p/w200${show.poster_path}`
-                      : 'https://via.placeholder.com/200x300?text=No+Poster'
-                    }
-                    alt={show.name}
-                    className="rounded-lg shadow-md w-full h-48 md:h-60 object-cover"
-                  />
-                  <h3 className="mt-2 text-sm font-medium truncate">{show.name}</h3>
-                  <p className="text-xs text-gray-500">{show.first_air_date?.substring(0, 4)}</p>
+                <div key={show.id} onClick={() => handleSimilarShowClick(show.id)}>
+                  <MovieCard movie={show} />
                 </div>
               ))}
             </div>
+            
+            {/* Loading indicator */}
+            {loadingSimilar && (
+              <div className="flex justify-center items-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+                <span className="ml-2 text-gray-300">Loading more shows...</span>
+              </div>
+            )}
+            
+            {/* End of results indicator */}
+            {!hasMoreSimilar && similarShows.length > 0 && (
+              <div className="text-center py-8 text-gray-400">
+                No more similar shows to load
+              </div>
+            )}
           </div>
         </div>
       )}
-
     </div>
   );
 };

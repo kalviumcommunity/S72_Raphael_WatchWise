@@ -1,0 +1,15 @@
+meta {
+  name: Update TV show status
+  type: http
+  seq: 2
+}
+
+put {
+  url: http://localhost:3000/controller/tvshow/:showId
+  body: none
+  auth: none
+}
+
+params:path {
+  showId: 
+}

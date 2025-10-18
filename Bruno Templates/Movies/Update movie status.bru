@@ -1,0 +1,15 @@
+meta {
+  name: Update movie status
+  type: http
+  seq: 2
+}
+
+put {
+  url: http://localhost:3000/controller/movie/:movieId
+  body: none
+  auth: none
+}
+
+params:path {
+  movieId: 
+}

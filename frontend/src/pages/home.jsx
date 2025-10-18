@@ -270,7 +270,7 @@ const Home = () => {
 
   if (loading.movies || loading.tvShows || loading.anime) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-[#151a24]">
         <Navbar />
         <div className="max-w-7xl mx-auto px-4 py-8 pt-24">
           <div className="flex justify-center items-center min-h-[400px]">
@@ -293,7 +293,7 @@ const Home = () => {
     return Object.entries(WATCH_STATUS_LABELS).map(([status, label]) => (
       <div key={status} className="mb-12">
         <div className="flex items-center gap-3 mb-6">
-          <h2 className="text-2xl font-bold text-gray-800">{label}</h2>
+          <h2 className="text-2xl font-bold text-white">{label}</h2>
           {content[status]?.length > 0 && (
             <span className="px-3 py-1 bg-gray-100 rounded-full text-sm text-gray-600">
               {content[status].length}
@@ -356,59 +356,59 @@ const Home = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-200">
+    <div className="min-h-screen bg-[#151a24]">
       <Navbar />
       <div className="max-w-7xl mx-auto px-4 py-8 pt-24">
         {/* Stats Section */}
         {stats && (
           <div className="grid grid-cols-3 gap-4 mb-8">
-            <div className="bg-white rounded-lg p-4 shadow-sm border-l-4 border-blue-500">
-              <h3 className="text-lg font-semibold text-gray-800">Plan to Watch</h3>
+            <div className="bg-[#1f2633] rounded-lg p-4 shadow-sm border-l-4 border-blue-500">
+              <h3 className="text-lg font-semibold text-white">Plan to Watch</h3>
               <div className="flex justify-between mt-2">
                 <div>
-                  <p className="text-sm text-gray-600">Movies</p>
+                  <p className="text-sm text-gray-200">Movies</p>
                   <p className="text-xl font-bold text-blue-500">{stats.movies.planToWatch}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">TV Shows</p>
+                  <p className="text-sm text-gray-200">TV Shows</p>
                   <p className="text-xl font-bold text-blue-500">{stats.tvShows.planToWatch}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">Anime</p>
+                  <p className="text-sm text-gray-200">Anime</p>
                   <p className="text-xl font-bold text-blue-500">{stats.anime.planToWatch}</p>
                 </div>
               </div>
             </div>
-            <div className="bg-white rounded-lg p-4 shadow-sm border-l-4 border-yellow-500">
-              <h3 className="text-lg font-semibold text-gray-800">Currently Watching</h3>
+            <div className="bg-[#1f2633] rounded-lg p-4 shadow-sm border-l-4 border-yellow-500">
+              <h3 className="text-lg font-semibold text-white">Currently Watching</h3>
               <div className="flex justify-between mt-2">
                 <div>
-                  <p className="text-sm text-gray-600">Movies</p>
+                  <p className="text-sm text-gray-200">Movies</p>
                   <p className="text-xl font-bold text-yellow-500">{stats.movies.inProgress}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">TV Shows</p>
+                  <p className="text-sm text-gray-200">TV Shows</p>
                   <p className="text-xl font-bold text-yellow-500">{stats.tvShows.inProgress}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">Anime</p>
+                  <p className="text-sm text-gray-200">Anime</p>
                   <p className="text-xl font-bold text-yellow-500">{stats.anime.inProgress}</p>
                 </div>
               </div>
             </div>
-            <div className="bg-white rounded-lg p-4 shadow-sm border-l-4 border-green-500">
-              <h3 className="text-lg font-semibold text-gray-800">Completed</h3>
+            <div className="bg-[#1f2633] rounded-lg p-4 shadow-sm border-l-4 border-green-500">
+              <h3 className="text-lg font-semibold text-white">Completed</h3>
               <div className="flex justify-between mt-2">
                 <div>
-                  <p className="text-sm text-gray-600">Movies</p>
+                  <p className="text-sm text-gray-200">Movies</p>
                   <p className="text-xl font-bold text-green-500">{stats.movies.watched}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">TV Shows</p>
+                  <p className="text-sm text-gray-200">TV Shows</p>
                   <p className="text-xl font-bold text-green-500">{stats.tvShows.watched}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">Anime</p>
+                  <p className="text-sm text-gray-200">Anime</p>
                   <p className="text-xl font-bold text-green-500">{stats.anime.watched}</p>
                 </div>
               </div>
@@ -432,7 +432,7 @@ const Home = () => {
             onClick={() => setActiveTab('tvShows')}
             className={`px-6 py-2 rounded-lg font-semibold transition-colors ${
               activeTab === 'tvShows'
-                ? 'bg-red-500 text-white'
+                ? 'bg-green-500 text-white'
                 : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
             }`}
           >
@@ -442,7 +442,7 @@ const Home = () => {
             onClick={() => setActiveTab('anime')}
             className={`px-6 py-2 rounded-lg font-semibold transition-colors ${
               activeTab === 'anime'
-                ? 'bg-red-500 text-white'
+                ? 'bg-blue-500 text-white'
                 : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
             }`}
           >
@@ -458,7 +458,7 @@ const Home = () => {
               placeholder={`Search your ${activeTab === 'movies' ? 'movies' : activeTab === 'tvShows' ? 'TV shows' : 'anime'}...`}
               value={searchQuery}
               onChange={handleSearch}
-              className="w-full px-4 py-3 pr-10 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent shadow-sm"
+              className="w-full px-4 py-3 pr-10 rounded-lg bg-[#2c3444] border border-gray-300 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent shadow-sm"
             />
             <div className="absolute inset-y-0 right-0 flex items-center pr-3">
               {searchQuery ? (

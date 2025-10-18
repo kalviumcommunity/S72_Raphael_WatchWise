@@ -1,0 +1,15 @@
+meta {
+  name: Update Anime status for current user
+  type: http
+  seq: 2
+}
+
+put {
+  url: http://localhost:3000/controller/anime/:animeID
+  body: none
+  auth: none
+}
+
+params:path {
+  animeID: 
+}
