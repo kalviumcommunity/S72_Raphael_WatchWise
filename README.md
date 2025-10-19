@@ -85,6 +85,118 @@ Contributions are welcome! If you'd like to contribute:
 3. Make your changes and commit them.
 4. Push to your fork and submit a pull request.
 
+## Docker Setup
+
+WatchWise now supports Docker for easy local development and deployment. Follow these steps to get started:
+
+### Prerequisites
+- Docker Desktop installed on your system
+- Git (to clone the repository)
+
+### Quick Start with Docker
+
+1. **Clone the repository**
+   ```bash
+   git clone <repository-url>
+   cd watchwise
+   ```
+
+2. **Start all services with Docker Compose**
+   ```bash
+   docker-compose up -d
+   ```
+
+3. **Access the application**
+   - Frontend: http://localhost:80
+   - Backend API: http://localhost:3000
+   - MongoDB: localhost:27017
+
+### Docker Commands
+
+**Build and start all services:**
+```bash
+docker-compose up -d --build
+```
+
+**View logs:**
+```bash
+# All services
+docker-compose logs -f
+
+# Specific service
+docker-compose logs -f backend
+docker-compose logs -f frontend
+docker-compose logs -f mongodb
+```
+
+**Stop services:**
+```bash
+docker-compose down
+```
+
+**Stop and remove volumes (clears database):**
+```bash
+docker-compose down -v
+```
+
+**Restart a specific service:**
+```bash
+docker-compose restart backend
+```
+
+### Environment Configuration
+
+1. **Backend Environment Variables**
+   Copy `backend/env.example` to `backend/.env` and update the values:
+   ```bash
+   cp backend/env.example backend/.env
+   ```
+
+2. **Frontend Environment Variables**
+   Copy `frontend/env.example` to `frontend/.env` and update the values:
+   ```bash
+   cp frontend/env.example frontend/.env
+   ```
+
+### Development with Docker
+
+For development, you can mount your local code into the containers:
+
+```bash
+# Development mode with volume mounting
+docker-compose -f docker-compose.dev.yml up
+```
+
+### Database Access
+
+To access the MongoDB database directly:
+```bash
+# Connect to MongoDB container
+docker exec -it watchwise-mongodb mongosh
+
+# Or use MongoDB Compass with:
+# Connection string: mongodb://admin:password123@localhost:27017
+```
+
+### Troubleshooting
+
+**Port conflicts:**
+If ports 80, 3000, or 27017 are already in use, modify the `docker-compose.yml` file to use different ports.
+
+**Permission issues:**
+On Linux/macOS, you might need to adjust file permissions:
+```bash
+sudo chown -R $USER:$USER backend/uploads
+```
+
+**Clean rebuild:**
+If you encounter issues, try a clean rebuild:
+```bash
+docker-compose down -v
+docker system prune -f
+docker-compose up -d --build
+```
+
 ## Deployment
 WatchWise is now Live!!
 Check it out here - 
