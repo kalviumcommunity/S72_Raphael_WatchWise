@@ -224,7 +224,7 @@ const Navbar = () => {
                 alt="WatchWise" 
                 className="w-10 h-10 rounded-lg group-hover:scale-110 transition-transform duration-200"
               />
-              <span className="text-white text-2xl font-bold tracking-tight group-hover:text-red-600 transition-colors duration-200">
+              <span className="text-white text-2xl font-bold tracking-tight group-hover:text-blue-600 transition-colors duration-200">
                 WatchWise
               </span>
             </button>
@@ -237,7 +237,7 @@ const Navbar = () => {
                   className="text-white hover:text-gray-300 font-medium px-3 py-2 transition-colors duration-200 relative group"
                 >
                   Home
-                  <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-red-600 group-hover:w-full transition-all duration-300"></span>
+                  <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-blue-600 group-hover:w-full transition-all duration-300"></span>
                 </button>
               </li>
               <li>
@@ -246,7 +246,7 @@ const Navbar = () => {
                   className="text-white hover:text-gray-300 font-medium px-3 py-2 transition-colors duration-200 relative group"
                 >
                   Recommendations
-                  <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-red-600 group-hover:w-full transition-all duration-300"></span>
+                  <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-blue-600 group-hover:w-full transition-all duration-300"></span>
                 </button>
               </li>
               <li ref={genreRef} className="relative">
@@ -263,7 +263,7 @@ const Navbar = () => {
                   >
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
                   </svg>
-                  <span className={`absolute bottom-0 left-0 w-0 h-0.5 bg-red-600 group-hover:w-full transition-all duration-300 ${showGenres ? 'w-full' : ''}`}></span>
+                  <span className={`absolute bottom-0 left-0 w-0 h-0.5 bg-blue-600 group-hover:w-full transition-all duration-300 ${showGenres ? 'w-full' : ''}`}></span>
                 </button>
                 {showGenres && (
                   <div className="absolute top-full left-0 mt-3 w-80 bg-black/98 backdrop-blur-xl rounded-xl shadow-2xl border border-gray-600 py-3 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
@@ -276,7 +276,7 @@ const Navbar = () => {
                           <button
                             key={genre.id}
                             onClick={() => handleGenreClick(genre.id)}
-                            className="px-4 py-3 text-left text-gray-300 hover:text-white bg-gray-900/30 hover:bg-red-600/40 rounded-lg transition-all duration-200 font-medium text-sm border border-gray-700 hover:border-red-500 group"
+                            className="px-4 py-3 text-left text-gray-300 hover:text-white bg-gray-900/30 hover:bg-blue-600/40 rounded-lg transition-all duration-200 font-medium text-sm border border-gray-700 hover:border-blue-500 group"
                           >
                             <span className="flex items-center justify-between">
                               {genre.name}
@@ -324,7 +324,7 @@ const Navbar = () => {
                   placeholder="Search..."
                   className={`px-4 py-2 pl-10 rounded-full bg-black/30 border border-gray-600 
                          text-white placeholder-gray-400
-                         focus:bg-black/60 focus:border-red-500 focus:outline-none
+                         focus:bg-black/60 focus:border-blue-500 focus:outline-none
                          transition-all duration-300 w-48 group-hover:w-56 group-focus-within:w-56 group-focus-within:bg-black/60`}
                 />
                 <svg
@@ -340,7 +340,7 @@ const Navbar = () => {
                 {/* Loading Indicator */}
                 {isSearching && (
                   <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-red-500 border-t-transparent"></div>
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-500 border-t-transparent"></div>
                   </div>
                 )}
               </div>
@@ -564,14 +564,14 @@ const Navbar = () => {
               className={`font-semibold rounded-lg px-4 py-2 transition-all duration-200 focus:outline-none text-sm ${
                 isAuthenticated 
                   ? 'text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 border-2 border-blue-200 hover:border-blue-300' 
-                  : 'text-white bg-red-600 hover:bg-red-700 border border-red-600 hover:border-red-700'
+                  : 'text-white bg-blue-600 hover:bg-blue-700 border border-blue-600 hover:border-blue-700'
               }`}
             >
               {isAuthenticated ? 'Profile' : 'Sign Up'}
             </button>
 
             {/* Mobile Menu Button */}
-            <button className="lg:hidden text-white hover:text-red-600 transition-colors focus:outline-none">
+            <button className="lg:hidden text-white hover:text-blue-600 transition-colors focus:outline-none">
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16"></path>
               </svg>
