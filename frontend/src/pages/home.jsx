@@ -42,7 +42,6 @@ const Home = () => {
     return savedTab || 'movies';
   });
   
-  // Search state
   const [searchQuery, setSearchQuery] = useState('');
   const [filteredContent, setFilteredContent] = useState({
     movies: {},
@@ -73,7 +72,6 @@ const Home = () => {
         })
       ]);
 
-      // Calculate stats from the responses
       const calculateStats = (items) => {
         return {
           planToWatch: items.filter(item => item.watchStatus === WATCH_STATUS.NOT_STARTED).length,
@@ -131,7 +129,6 @@ const Home = () => {
           })
         ]);
 
-        // Group movies by watch status
         const groupedMovies = {};
         movieResponse.data.movies.forEach(movie => {
           if (movie.watchStatus !== WATCH_STATUS.NOT_PLANNING) {
@@ -142,7 +139,6 @@ const Home = () => {
           }
         });
 
-        // Group TV shows by watch status
         const groupedTvShows = {};
         tvResponse.data.tvShows.forEach(show => {
           if (show.watchStatus !== WATCH_STATUS.NOT_PLANNING) {
@@ -153,7 +149,6 @@ const Home = () => {
           }
         });
 
-        // Group anime by watch status
         const groupedAnime = {};
         animeResponse.data.anime.forEach(item => {
           if (item.watchStatus !== WATCH_STATUS.NOT_PLANNING) {
@@ -168,14 +163,12 @@ const Home = () => {
         setTvShows(groupedTvShows);
         setAnime(groupedAnime);
         
-        // Initialize filtered content with all content
         setFilteredContent({
           movies: { ...groupedMovies },
           tvShows: { ...groupedTvShows },
           anime: { ...groupedAnime }
         });
 
-        // Calculate and set stats
         const calculateStats = (items) => {
           return {
             planToWatch: items.filter(item => item.watchStatus === WATCH_STATUS.NOT_STARTED).length,
@@ -210,19 +203,15 @@ const Home = () => {
 
     fetchUserContent();
 
-    // Set up an interval to fetch stats periodically
     const statsInterval = setInterval(() => {
       fetchStats(token);
-    }, 30000); // Fetch every 30 seconds
+    }, 30000);
 
-    // Cleanup interval on component unmount
     return () => clearInterval(statsInterval);
   }, [navigate]);
   
-  // Filter content based on search query
   useEffect(() => {
     if (searchQuery.trim() === '') {
-      // If search is empty, show all content
       setFilteredContent({
         movies: { ...movies },
         tvShows: { ...tvShows },
@@ -233,7 +222,6 @@ const Home = () => {
     
     const query = searchQuery.toLowerCase();
     
-    // Filter movies
     const filteredMovies = {};
     Object.entries(movies).forEach(([status, items]) => {
       filteredMovies[status] = items.filter(movie => 
@@ -241,7 +229,6 @@ const Home = () => {
       );
     });
     
-    // Filter TV shows
     const filteredTvShows = {};
     Object.entries(tvShows).forEach(([status, items]) => {
       filteredTvShows[status] = items.filter(show => 
@@ -249,7 +236,6 @@ const Home = () => {
       );
     });
     
-    // Filter anime
     const filteredAnimeItems = {};
     Object.entries(anime).forEach(([status, items]) => {
       filteredAnimeItems[status] = items.filter(animeItem => 
@@ -270,11 +256,11 @@ const Home = () => {
 
   if (loading.movies || loading.tvShows || loading.anime) {
     return (
-      <div className="min-h-screen bg-[#151a24]">
+      <div className="min-h-screen bg-black">
         <Navbar />
         <div className="max-w-7xl mx-auto px-4 py-8 pt-24">
           <div className="flex justify-center items-center min-h-[400px]">
-            <div className="animate-spin rounded-full h-12 w-12 border-4 border-red-500 border-t-transparent"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent"></div>
           </div>
         </div>
       </div>
@@ -295,18 +281,18 @@ const Home = () => {
         <div className="flex items-center gap-3 mb-6">
           <h2 className="text-2xl font-bold text-white">{label}</h2>
           {content[status]?.length > 0 && (
-            <span className="px-3 py-1 bg-gray-100 rounded-full text-sm text-gray-600">
+            <span className="px-3 py-1 bg-gray-800 text-gray-300 rounded-full text-sm font-medium">
               {content[status].length}
             </span>
           )}
         </div>
         
         {content[status]?.length > 0 ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
             {content[status].map((item) => (
               <div 
                 key={type === 'movies' ? item.movieId : type === 'tvShows' ? item.showId : item.animeId}
-                className={`aspect-[2/3] relative rounded-lg overflow-hidden transition-transform hover:-translate-y-1
+                className={`aspect-[2/3] relative rounded-md overflow-hidden transition-transform hover:scale-105 hover:z-10
                           border-t-4 ${WATCH_STATUS_COLORS[status]}`}
               >
                 <CardComponent 
@@ -346,141 +332,170 @@ const Home = () => {
             ))}
           </div>
         ) : (
-          <p className="text-gray-500 text-center py-8 bg-white rounded-lg">
-            No {type === 'movies' ? 'movies' : type === 'tvShows' ? 'TV shows' : 'anime'} in this category yet
-            {searchQuery && " matching your search"}
-          </p>
+          <div className="text-center py-16">
+            <div className="inline-block p-4 bg-gray-900 rounded-full mb-4">
+              <svg className="w-12 h-12 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z" />
+              </svg>
+            </div>
+            <p className="text-gray-400 text-lg">
+              No {type === 'movies' ? 'movies' : type === 'tvShows' ? 'TV shows' : 'anime'} in this category yet
+            </p>
+            {searchQuery && (
+              <p className="text-gray-500 text-sm mt-2">Try adjusting your search</p>
+            )}
+          </div>
         )}
       </div>
     ));
   };
 
   return (
-    <div className="min-h-screen bg-[#151a24]">
+    <div className="min-h-screen bg-black">
       <Navbar />
       <div className="max-w-7xl mx-auto px-4 py-8 pt-24">
+        {/* Hero Section with Title */}
+        <div className="mb-8">
+          <h1 className="text-4xl font-bold text-white mb-2">My List</h1>
+          <p className="text-gray-400 text-lg">Track your favorite movies, TV shows, and anime</p>
+        </div>
+
         {/* Stats Section */}
         {stats && (
-          <div className="grid grid-cols-3 gap-4 mb-8">
-            <div className="bg-[#1f2633] rounded-lg p-4 shadow-sm border-l-4 border-blue-500">
-              <h3 className="text-lg font-semibold text-white">Plan to Watch</h3>
-              <div className="flex justify-between mt-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
+            <div className="bg-gray-900/50 backdrop-blur-sm rounded-lg p-6 border border-gray-800 hover:border-blue-500 transition-colors">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-2 bg-blue-500/20 rounded-lg">
+                  <svg className="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-semibold text-white">Plan to Watch</h3>
+              </div>
+              <div className="grid grid-cols-3 gap-4">
                 <div>
-                  <p className="text-sm text-gray-200">Movies</p>
-                  <p className="text-xl font-bold text-blue-500">{stats.movies.planToWatch}</p>
+                  <p className="text-xs text-gray-400 mb-1">Movies</p>
+                  <p className="text-2xl font-bold text-blue-400">{stats.movies.planToWatch}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-200">TV Shows</p>
-                  <p className="text-xl font-bold text-blue-500">{stats.tvShows.planToWatch}</p>
+                  <p className="text-xs text-gray-400 mb-1">TV Shows</p>
+                  <p className="text-2xl font-bold text-blue-400">{stats.tvShows.planToWatch}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-200">Anime</p>
-                  <p className="text-xl font-bold text-blue-500">{stats.anime.planToWatch}</p>
+                  <p className="text-xs text-gray-400 mb-1">Anime</p>
+                  <p className="text-2xl font-bold text-blue-400">{stats.anime.planToWatch}</p>
                 </div>
               </div>
             </div>
-            <div className="bg-[#1f2633] rounded-lg p-4 shadow-sm border-l-4 border-yellow-500">
-              <h3 className="text-lg font-semibold text-white">Currently Watching</h3>
-              <div className="flex justify-between mt-2">
+
+            <div className="bg-gray-900/50 backdrop-blur-sm rounded-lg p-6 border border-gray-800 hover:border-yellow-500 transition-colors">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-2 bg-yellow-500/20 rounded-lg">
+                  <svg className="w-6 h-6 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-semibold text-white">Watching</h3>
+              </div>
+              <div className="grid grid-cols-3 gap-4">
                 <div>
-                  <p className="text-sm text-gray-200">Movies</p>
-                  <p className="text-xl font-bold text-yellow-500">{stats.movies.inProgress}</p>
+                  <p className="text-xs text-gray-400 mb-1">Movies</p>
+                  <p className="text-2xl font-bold text-yellow-400">{stats.movies.inProgress}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-200">TV Shows</p>
-                  <p className="text-xl font-bold text-yellow-500">{stats.tvShows.inProgress}</p>
+                  <p className="text-xs text-gray-400 mb-1">TV Shows</p>
+                  <p className="text-2xl font-bold text-yellow-400">{stats.tvShows.inProgress}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-200">Anime</p>
-                  <p className="text-xl font-bold text-yellow-500">{stats.anime.inProgress}</p>
+                  <p className="text-xs text-gray-400 mb-1">Anime</p>
+                  <p className="text-2xl font-bold text-yellow-400">{stats.anime.inProgress}</p>
                 </div>
               </div>
             </div>
-            <div className="bg-[#1f2633] rounded-lg p-4 shadow-sm border-l-4 border-green-500">
-              <h3 className="text-lg font-semibold text-white">Completed</h3>
-              <div className="flex justify-between mt-2">
+
+            <div className="bg-gray-900/50 backdrop-blur-sm rounded-lg p-6 border border-gray-800 hover:border-green-500 transition-colors">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-2 bg-green-500/20 rounded-lg">
+                  <svg className="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-semibold text-white">Completed</h3>
+              </div>
+              <div className="grid grid-cols-3 gap-4">
                 <div>
-                  <p className="text-sm text-gray-200">Movies</p>
-                  <p className="text-xl font-bold text-green-500">{stats.movies.watched}</p>
+                  <p className="text-xs text-gray-400 mb-1">Movies</p>
+                  <p className="text-2xl font-bold text-green-400">{stats.movies.watched}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-200">TV Shows</p>
-                  <p className="text-xl font-bold text-green-500">{stats.tvShows.watched}</p>
+                  <p className="text-xs text-gray-400 mb-1">TV Shows</p>
+                  <p className="text-2xl font-bold text-green-400">{stats.tvShows.watched}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-200">Anime</p>
-                  <p className="text-xl font-bold text-green-500">{stats.anime.watched}</p>
+                  <p className="text-xs text-gray-400 mb-1">Anime</p>
+                  <p className="text-2xl font-bold text-green-400">{stats.anime.watched}</p>
                 </div>
               </div>
             </div>
           </div>
         )}
 
-        {/* Content Type Tabs */}
-        <div className="flex gap-4 mb-6">
-          <button
-            onClick={() => setActiveTab('movies')}
-            className={`px-6 py-2 rounded-lg font-semibold transition-colors ${
-              activeTab === 'movies'
-                ? 'bg-red-500 text-white'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-            }`}
-          >
-            Movies
-          </button>
-          <button
-            onClick={() => setActiveTab('tvShows')}
-            className={`px-6 py-2 rounded-lg font-semibold transition-colors ${
-              activeTab === 'tvShows'
-                ? 'bg-green-500 text-white'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-            }`}
-          >
-            TV Shows
-          </button>
-          <button
-            onClick={() => setActiveTab('anime')}
-            className={`px-6 py-2 rounded-lg font-semibold transition-colors ${
-              activeTab === 'anime'
-                ? 'bg-blue-500 text-white'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-            }`}
-          >
-            Anime
-          </button>
-        </div>
-        
-        {/* Search Bar */}
-        <div className="mb-8">
-          <div className="relative">
-            <input
-              type="text"
-              placeholder={`Search your ${activeTab === 'movies' ? 'movies' : activeTab === 'tvShows' ? 'TV shows' : 'anime'}...`}
-              value={searchQuery}
-              onChange={handleSearch}
-              className="w-full px-4 py-3 pr-10 rounded-lg bg-[#2c3444] border border-gray-300 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent shadow-sm"
-            />
-            <div className="absolute inset-y-0 right-0 flex items-center pr-3">
-              {searchQuery ? (
+        {/* Search and Tabs Section */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+          {/* Content Type Tabs */}
+          <div className="flex gap-2 border-b border-gray-800 pb-4">
+            {['movies', 'tvShows', 'anime'].map((tab) => {
+              const labels = { movies: 'Movies', tvShows: 'TV Shows', anime: 'Anime' };
+              return (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className={`px-6 py-3 font-semibold text-lg whitespace-nowrap transition-all duration-300 relative ${
+                    activeTab === tab
+                      ? 'text-white'
+                      : 'text-gray-400 hover:text-white'
+                  }`}
+                >
+                  {labels[tab]}
+                  {activeTab === tab && (
+                    <div className="absolute bottom-0 left-0 right-0 h-1 bg-blue-600" />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+          
+          {/* Search Bar */}
+          <div className="w-full sm:w-64">
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Search..."
+                value={searchQuery}
+                onChange={handleSearch}
+                className="w-full px-4 py-3 pl-10 rounded-full bg-gray-900 border border-gray-700 text-white placeholder-gray-500
+                         focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              />
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-500 absolute left-3 top-1/2 transform -translate-y-1/2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              {searchQuery && (
                 <button 
                   onClick={() => setSearchQuery('')}
-                  className="text-gray-400 hover:text-gray-600"
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-white transition-colors"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                     <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
                   </svg>
                 </button>
-              ) : (
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
               )}
             </div>
           </div>
         </div>
 
         {error ? (
-          <div className="bg-red-100 text-red-700 p-4 rounded-lg">
+          <div className="bg-red-900/30 border border-red-500 text-red-400 p-4 rounded-lg">
             {error}
           </div>
         ) : (

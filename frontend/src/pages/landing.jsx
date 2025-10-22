@@ -31,7 +31,6 @@ const Landing = () => {
     return savedTab || 'movies';
   });
   
-  // Separate pagination state for each tab
   const [moviePage, setMoviePage] = useState(1);
   const [tvPage, setTvPage] = useState(1);
   const [animePage, setAnimePage] = useState(1);
@@ -41,12 +40,9 @@ const Landing = () => {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [scrollRestored, setScrollRestored] = useState(false);
   
-  // Observer for infinite scrolling
   const observer = useRef();
-  // Separate ref for the observer trigger element
   const observerTriggerRef = useRef(null);
 
-  // Debug logging - add this temporarily to see what's happening
   useEffect(() => {
     console.log('State changed:', { 
       activeTab, 
@@ -57,7 +53,6 @@ const Landing = () => {
     });
   }, [activeTab, movies.length, tvShows.length, anime.length, searchState.results]);
 
-  // Fetch latest movies for carousel
   useEffect(() => {
     const fetchCarouselMovies = async () => {
       try {
@@ -72,14 +67,12 @@ const Landing = () => {
     fetchCarouselMovies();
   }, []);
 
-  // Save scroll position when component unmounts or user navigates away
   useEffect(() => {
     const saveScrollPosition = () => {
       const scrollPosition = window.scrollY;
       sessionStorage.setItem(`landingScrollPosition_${activeTab}`, scrollPosition.toString());
     };
 
-    // Save scroll position on beforeunload and visibilitychange
     const handleBeforeUnload = () => saveScrollPosition();
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'hidden') {
@@ -87,13 +80,12 @@ const Landing = () => {
       }
     };
 
-    // Also save periodically while scrolling (throttled)
     let scrollTimeout;
     const handleScroll = () => {
       clearTimeout(scrollTimeout);
       scrollTimeout = setTimeout(() => {
         saveScrollPosition();
-      }, 100); // Throttle to every 100ms
+      }, 100);
     };
 
     window.addEventListener('beforeunload', handleBeforeUnload);
@@ -101,7 +93,7 @@ const Landing = () => {
     window.addEventListener('scroll', handleScroll);
 
     return () => {
-      saveScrollPosition(); // Save on component unmount
+      saveScrollPosition();
       window.removeEventListener('beforeunload', handleBeforeUnload);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('scroll', handleScroll);
@@ -109,12 +101,10 @@ const Landing = () => {
     };
   }, [activeTab]);
 
-  // Restore scroll position after content loads
   useEffect(() => {
     if (!loading && !scrollRestored && (movies.length > 0 || tvShows.length > 0 || anime.length > 0)) {
       const savedScrollPosition = sessionStorage.getItem(`landingScrollPosition_${activeTab}`);
       if (savedScrollPosition) {
-        // Use requestAnimationFrame to ensure DOM is ready
         requestAnimationFrame(() => {
           window.scrollTo(0, parseInt(savedScrollPosition, 10));
           setScrollRestored(true);
@@ -125,22 +115,18 @@ const Landing = () => {
     }
   }, [loading, movies.length, tvShows.length, anime.length, scrollRestored, activeTab]);
 
-  // Save active tab to localStorage
   useEffect(() => {
     localStorage.setItem('activeTab', activeTab);
   }, [activeTab]);
 
-  // Initial content load
   useEffect(() => {
       const loadInitialContent = async () => {
         if (searchState.results) {
-          // If we have search results, use them
           setMovies(searchState.results.movies || []);
           setTvShows(searchState.results.tvShows || []);
           setAnime(searchState.results.anime || []);
           setLoading(false);
         } else {
-          // Otherwise load popular content
           await fetchPopularContent(1, true);
         }
       };
@@ -163,7 +149,6 @@ const Landing = () => {
       ]);
 
       if (isInitial) {
-        // Completely reset all arrays to prevent contamination
         setMovies([...movieResponse.data.results]);
         setTvShows([...tvResponse.data.results]);
         setAnime([...animeResponse.data.data]);
@@ -179,7 +164,6 @@ const Landing = () => {
         setAnimePage(pageNum);
       }
       
-      // Check if we have more content to load for each type
       const hasMoreMovies = movieResponse.data.page < movieResponse.data.total_pages;
       const hasMoreTv = tvResponse.data.page < tvResponse.data.total_pages;
       const hasMoreAnime = animeResponse.data.pagination?.has_next_page;
@@ -225,7 +209,6 @@ const Landing = () => {
         query: searchState.query
       });
 
-      // Update local state to match search results
       setMovies([...newResults.movies]);
       setTvShows([...newResults.tvShows]);
       setAnime([...newResults.anime]);
@@ -237,7 +220,6 @@ const Landing = () => {
     }
   };
 
-  // Fetch more content for a specific tab only
   const fetchMoreForTab = async (tab, pageNum) => {
     setIsLoadingMore(true);
     
@@ -271,16 +253,13 @@ const Landing = () => {
     }
   };
 
-  // Load more content for specific tab
   const loadMoreForActiveTab = useCallback(() => {
     if (isLoadingMore) return;
     
     if (searchState.results) {
-      // For search results, load more of all types
       const nextPage = (searchState.page || 1) + 1;
       fetchMoreSearchResults(nextPage);
     } else {
-      // For popular content, load more based on active tab
       let nextPage, hasMoreForTab;
       
       switch (activeTab) {
@@ -309,20 +288,16 @@ const Landing = () => {
     }
   }, [activeTab, moviePage, tvPage, animePage, movieHasMore, tvHasMore, animeHasMore, searchState.results, searchState.page, isLoadingMore]);
 
-  // Setup intersection observer for infinite scrolling
   useEffect(() => {
     if (loading) return;
     
-    // Disconnect existing observer
     if (observer.current) {
       observer.current.disconnect();
     }
     
-    // Determine if current tab has more content
     let currentTabHasMore;
     if (searchState.results) {
-      // For search results, check if any category has more content
-      currentTabHasMore = true; // Simplified for search results
+      currentTabHasMore = true;
     } else {
       switch (activeTab) {
         case 'movies':
@@ -339,7 +314,6 @@ const Landing = () => {
       }
     }
     
-    // Only create observer if current tab has more content
     if (currentTabHasMore) {
       observer.current = new IntersectionObserver(entries => {
         if (entries[0].isIntersecting && !isLoadingMore) {
@@ -350,7 +324,6 @@ const Landing = () => {
         rootMargin: '100px'
       });
       
-      // Observe the trigger element if it exists
       if (observerTriggerRef.current) {
         observer.current.observe(observerTriggerRef.current);
       }
@@ -367,38 +340,32 @@ const Landing = () => {
     setLoading(true);
     clearSearch();
     
-    // Clear all content first to prevent contamination
     setMovies([]);
     setTvShows([]);
     setAnime([]);
     
     await fetchPopularContent(1, true);
     
-    // Clear saved scroll positions
     sessionStorage.removeItem('landingScrollPosition_movies');
     sessionStorage.removeItem('landingScrollPosition_tvShows');
     sessionStorage.removeItem('landingScrollPosition_anime');
     setScrollRestored(false);
     
-    // Reset to page 1
     window.scrollTo(0, 0);
   };
 
   const handleTabChange = (tab) => {
     setActiveTab(tab);
-    // Clear scroll position when changing tabs so user starts at top
     sessionStorage.removeItem(`landingScrollPosition_${tab}`);
     setScrollRestored(false);
     window.scrollTo(0, 0);
   };
 
   const renderContent = () => {
-    // Force re-render by using activeTab in the key and be very explicit about which data to show
     let items = [];
     let currentData = [];
     
     if (searchState.results) {
-      // For search results
       switch (activeTab) {
         case 'movies':
           currentData = searchState.results.movies || [];
@@ -420,7 +387,6 @@ const Landing = () => {
           break;
       }
     } else {
-      // For popular content - be very explicit about which array to use
       switch (activeTab) {
         case 'movies':
           currentData = movies;
@@ -445,15 +411,14 @@ const Landing = () => {
     
     return (
       <>
-        <div key={`content-${activeTab}`} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+        <div key={`content-${activeTab}`} className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
           {items}
         </div>
         
-        {/* Invisible trigger element for infinite scroll */}
         {(() => {
           let currentTabHasMore;
           if (searchState.results) {
-            currentTabHasMore = currentData.length > 0; // Simplified for search results
+            currentTabHasMore = currentData.length > 0;
           } else {
             switch (activeTab) {
               case 'movies':
@@ -484,89 +449,80 @@ const Landing = () => {
   };
 
 return (
-<div className="min-h-screen bg-[#151a24]">
+<div className="min-h-screen bg-black">
   <Navbar />
 
-  {/* Title Container */}
-  <div className="relative text-center mt-8 mb-6 px-4">
-    <h2 className="text-3xl font-bold pt-16 text-white">Latest Trending Content</h2>
-  </div>
-
-  {/* Carousel Container */}
-  <div className="relative">
+  {/* Carousel Container with Netflix-style hero */}
+  <div className="relative w-full pt-20">
     <ImageCarousel movies={carouselMovies} />
+    {/* Gradient overlay for smooth transition */}
+    <div className="absolute bottom-0 left-0 w-full h-32 bg-gradient-to-t from-black via-black/50 to-transparent pointer-events-none" />
   </div>
 
-  <div className="container mx-auto px-4 pb-12">
-    {/* Tab Navigation */}
-    <div className="flex justify-center mb-8 mt-8">
-      <div className="relative flex space-x-2 bg-[#2c3444] rounded-lg p-1 shadow-sm">
-        {/* Tab Buttons */}
-        <button
-          onClick={() => handleTabChange('movies')}
-          className={`px-4 py-2 rounded-md transition-colors duration-300 ease-in-out font-bold ${
-            activeTab === 'movies'
-              ? 'bg-red-500 text-white'
-              : 'text-white hover:bg-gray-100 hover:text-blue-500'
-          }`}
-        >
-          Movies
-        </button>
-        <button
-          onClick={() => handleTabChange('tvShows')}
-          className={`px-4 py-2 rounded-md transition-colors duration-300 ease-in-out font-bold ${
-            activeTab === 'tvShows'
-              ? 'bg-red-500 text-white'
-              : 'text-white hover:bg-gray-100 hover:text-blue-500'
-          }`}
-        >
-          TV Shows
-        </button>
-        <button
-          onClick={() => handleTabChange('anime')}
-          className={`px-4 py-2 rounded-md transition-colors duration-300 ease-in-out font-bold ${
-            activeTab === 'anime'
-              ? 'bg-red-500 text-white'
-              : 'text-white hover:bg-gray-100 hover:text-blue-500'
-          }`}
-        >
-          Anime
-        </button>
-      </div>
+  <div className="container mx-auto px-4 pb-16">
+    {/* Content Sections */}
+    <div className="space-y-12">
+      {/* Search Results Notice */}
+      {searchState.results && (
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pt-4">
+          <div>
+            <h2 className="text-2xl font-bold text-white">
+              Search Results for <span className="text-blue-600">"{searchState.query}"</span>
+            </h2>
+          </div>
+          <button
+            onClick={handleShowPopular}
+            className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors duration-200 font-semibold whitespace-nowrap"
+          >
+            Show Popular
+          </button>
+        </div>
+      )}
+
+      {/* Tab Navigation */}
+      <div className="relative flex items-center gap-2 border-b border-gray-700 overflow-x-auto pb-4">
+      {['movies', 'tvShows', 'anime'].map((tab) => {
+        const labels = { movies: 'Movies', tvShows: 'TV Shows', anime: 'Anime' };
+        return (
+          <button
+            key={tab}
+            onClick={() => handleTabChange(tab)}
+            className={`group relative px-6 py-3 font-semibold text-lg whitespace-nowrap transition-colors duration-300 ${
+              activeTab === tab ? 'text-white' : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            {labels[tab]}
+            <span
+              className={`absolute bottom-0 left-0 right-0 h-1 bg-blue-600 rounded-full transform transition-transform duration-300 ease-in-out ${
+                activeTab === tab ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-100'
+              }`}
+            />
+          </button>
+        );
+      })}
     </div>
 
-    {/* Search Results Notice */}
-    {searchState.results && (
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-xl font-semibold text-gray-200">
-          Search Results for "{searchState.query}"
-        </h2>
-        <button
-          onClick={handleShowPopular}
-          className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors"
-        >
-          Show Popular Content
-        </button>
-      </div>
-    )}
-
-    {/* Content Grid */}
-    {loading ? (
-      <div className="flex justify-center items-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-12 w-12 border-4 border-red-500 border-t-transparent"></div>
-      </div>
-    ) : (
-      <>
-        {renderContent()}
-
-        {/* Loading indicator at bottom for infinite scroll */}
-        {isLoadingMore && (
-          <div className="mt-8 flex justify-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-4 border-red-500 border-t-transparent"></div>
+      {/* Content Grid */}
+      {loading ? (
+        <div className="flex justify-center items-center min-h-[500px]">
+          <div className="flex flex-col items-center gap-4">
+            <div className="animate-spin rounded-full h-16 w-16 border-4 border-gray-700 border-t-blue-600"></div>
+            <p className="text-gray-400 text-sm">Loading content...</p>
           </div>
-        )}
-      </>
-    )}
+        </div>
+      ) : (
+        <div>
+          {renderContent()}
+
+          {/* Loading indicator at bottom */}
+          {isLoadingMore && (
+            <div className="mt-12 flex justify-center">
+              <div className="animate-spin rounded-full h-10 w-10 border-4 border-gray-700 border-t-blue-600"></div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   </div>
 </div>
   );

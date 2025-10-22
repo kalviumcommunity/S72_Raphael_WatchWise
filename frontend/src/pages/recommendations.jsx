@@ -18,6 +18,7 @@ const Recommendations = () => {
     const [recommendedAnime, setRecommendedAnime] = useState([]);
     const [loading, setLoading] = useState(true);
     const [loadingMore, setLoadingMore] = useState(false);
+    const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState(null);
     const [activeTab, setActiveTab] = useState(() => localStorage.getItem('activeRecommendationTab') || 'movies');
     const [currentPage, setCurrentPage] = useState({
@@ -26,19 +27,16 @@ const Recommendations = () => {
         anime: 1
     });
     
-    // Refs for intersection observer and content
     const observer = useRef();
     const contentRef = useRef(null);
     const loadingRef = useRef(null);
     
-    // Flag to determine if there's more content to load
     const [hasMore, setHasMore] = useState({
         movies: true,
         tvShows: true,
         anime: true
     });
 
-    // New function to retrieve recommendations from local storage
     const getRecommendationsFromStorage = (type) => {
         try {
             const stored = localStorage.getItem(`recommendations_${type}`);
@@ -60,7 +58,6 @@ const Recommendations = () => {
             return;
         }
 
-        // Retrieve stored recommendations on initial load
         const storedMovieRecommendations = getRecommendationsFromStorage('movies');
         const storedTvShowRecommendations = getRecommendationsFromStorage('tvShows');
         const storedAnimeRecommendations = getRecommendationsFromStorage('anime');
@@ -88,9 +85,14 @@ const Recommendations = () => {
         };
     }, [navigate]);
 
-    const fetchUserContent = async (token) => {
+    const fetchUserContent = async (token, forceRefresh = false) => {
         try {
-            setLoading(true);
+            if (forceRefresh) {
+                setRefreshing(true);
+            } else {
+                setLoading(true);
+            }
+            
             const [movieResponse, tvResponse, animeResponse] = await Promise.all([
                 axios.get("https://s72-raphael-watchwise.onrender.com/api/profile/movies", {
                     headers: { 'Authorization': `Bearer ${token}` }
@@ -103,7 +105,6 @@ const Recommendations = () => {
                 })
             ]);
 
-            // Filter movies, TV shows, and anime, excluding 'not_planning_to_watch' items
             const watchedOrInProgressMovies = movieResponse.data.movies.filter(movie =>
                 movie.watchStatus !== 'not_planning_to_watch'
             );
@@ -114,17 +115,14 @@ const Recommendations = () => {
                 item.watchStatus !== 'not_planning_to_watch'
             );
 
-            // Update state with filtered content
             setMovies(watchedOrInProgressMovies);
             setTvShows(watchedOrInProgressTvShows);
             setAnime(watchedOrInProgressAnime);
 
-            // Prepare arrays of watched content IDs
             const allWatchedMovieIds = watchedOrInProgressMovies.map(m => m.movieId);
             const allWatchedTvShowIds = watchedOrInProgressTvShows.map(s => s.showId);
             const allWatchedAnimeIds = watchedOrInProgressAnime.map(a => a.animeId);
 
-            // Fetch movie recommendations
             if (watchedOrInProgressMovies.length > 0) {
                 const recommendations = await Promise.all(
                     watchedOrInProgressMovies.map(movie =>
@@ -135,13 +133,17 @@ const Recommendations = () => {
                 const uniqueRecommendations = Array.from(
                     new Map(allRecommendations.map(item => [item.id, item])).values()
                 );
-                const topRecommendations = uniqueRecommendations.slice(0, 50);
-                setRecommendedMovies(topRecommendations);
+                
+                // Shuffle recommendations if refreshing
+                const finalRecommendations = forceRefresh 
+                    ? shuffleArray(uniqueRecommendations).slice(0, 50)
+                    : uniqueRecommendations.slice(0, 50);
+                
+                setRecommendedMovies(finalRecommendations);
                 setHasMore(prev => ({ ...prev, movies: uniqueRecommendations.length > 50 }));
-                localStorage.setItem('recommendations_movies', JSON.stringify(topRecommendations));
+                localStorage.setItem('recommendations_movies', JSON.stringify(finalRecommendations));
             }
 
-            // Fetch TV show recommendations
             if (watchedOrInProgressTvShows.length > 0) {
                 const recommendations = await Promise.all(
                     watchedOrInProgressTvShows.map(show =>
@@ -152,13 +154,16 @@ const Recommendations = () => {
                 const uniqueRecommendations = Array.from(
                     new Map(allRecommendations.map(item => [item.id, item])).values()
                 );
-                const topRecommendations = uniqueRecommendations.slice(0, 50);
-                setRecommendedTvShows(topRecommendations);
+                
+                const finalRecommendations = forceRefresh 
+                    ? shuffleArray(uniqueRecommendations).slice(0, 50)
+                    : uniqueRecommendations.slice(0, 50);
+                
+                setRecommendedTvShows(finalRecommendations);
                 setHasMore(prev => ({ ...prev, tvShows: uniqueRecommendations.length > 50 }));
-                localStorage.setItem('recommendations_tvShows', JSON.stringify(topRecommendations));
+                localStorage.setItem('recommendations_tvShows', JSON.stringify(finalRecommendations));
             }
 
-            // Fetch anime recommendations
             if (watchedOrInProgressAnime.length > 0) {
                 const recommendations = await Promise.all(
                     watchedOrInProgressAnime.map(item =>
@@ -169,13 +174,18 @@ const Recommendations = () => {
                 const uniqueRecommendations = Array.from(
                     new Map(allRecommendations.map(item => [item.mal_id, item])).values()
                 );
-                const topRecommendations = uniqueRecommendations.slice(0, 50);
-                setRecommendedAnime(topRecommendations);
+                
+                const finalRecommendations = forceRefresh 
+                    ? shuffleArray(uniqueRecommendations).slice(0, 50)
+                    : uniqueRecommendations.slice(0, 50);
+                
+                setRecommendedAnime(finalRecommendations);
                 setHasMore(prev => ({ ...prev, anime: uniqueRecommendations.length > 50 }));
-                localStorage.setItem('recommendations_anime', JSON.stringify(topRecommendations));
+                localStorage.setItem('recommendations_anime', JSON.stringify(finalRecommendations));
             }
 
             setLoading(false);
+            setRefreshing(false);
         } catch (error) {
             console.error("Error fetching user content:", error);
             if (error.response?.status === 401) {
@@ -185,6 +195,24 @@ const Recommendations = () => {
                 setError("Failed to fetch your content. Please try again later.");
             }
             setLoading(false);
+            setRefreshing(false);
+        }
+    };
+
+    // Shuffle array utility function
+    const shuffleArray = (array) => {
+        const shuffled = [...array];
+        for (let i = shuffled.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+        }
+        return shuffled;
+    };
+
+    const handleRefresh = () => {
+        const token = localStorage.getItem('token');
+        if (token) {
+            fetchUserContent(token, true);
         }
     };
 
@@ -195,7 +223,6 @@ const Recommendations = () => {
         try {
             setLoadingMore(true);
 
-            // Determine current recommendations and watched content based on type
             const currentRecommendations = type === 'movies' ? recommendedMovies
                 : type === 'tvShows' ? recommendedTvShows
                 : recommendedAnime;
@@ -204,21 +231,18 @@ const Recommendations = () => {
                 : type === 'tvShows' ? tvShows
                 : anime;
 
-            // Get IDs of watched content
             const currentWatchedIds = currentWatchedContent.map(item =>
                 type === 'movies' ? item.movieId
                     : type === 'tvShows' ? item.showId
                         : item.animeId
             );
 
-            // Track existing recommendation IDs to prevent duplicates
             const existingRecommendationIds = new Set(
                 currentRecommendations.map(item =>
                     type === 'anime' ? item.mal_id : item.id
                 )
             );
 
-            // Fetch new recommendations
             let newRecommendations = [];
             if (type === 'movies' && currentWatchedContent.length > 0) {
                 const recommendations = await Promise.all(
@@ -243,13 +267,11 @@ const Recommendations = () => {
                 newRecommendations = recommendations.flat();
             }
 
-            // Filter out duplicates and existing recommendations
             const uniqueNewRecommendations = newRecommendations.filter(item => {
                 const itemId = type === 'anime' ? item.mal_id : item.id;
                 return !existingRecommendationIds.has(itemId);
             });
 
-            // Update recommendations based on type
             let updatedRecommendations;
             const batchSize = 20;
             switch (type) {
@@ -272,13 +294,11 @@ const Recommendations = () => {
                     break;
             }
 
-            // Update current page
             setCurrentPage(prev => ({
                 ...prev,
                 [type]: prev[type] + 1
             }));
 
-            // Update hasMore flag
             setHasMore(prev => ({
                 ...prev,
                 [type]: uniqueNewRecommendations.length > batchSize
@@ -292,7 +312,6 @@ const Recommendations = () => {
         }
     }, [loadingMore, recommendedMovies, recommendedTvShows, recommendedAnime, movies, tvShows, anime, hasMore]);
 
-    // Intersection Observer setup
     const lastElementRef = useCallback(node => {
         if (loadingMore) return;
         if (observer.current) observer.current.disconnect();
@@ -306,7 +325,6 @@ const Recommendations = () => {
         if (node) observer.current.observe(node);
     }, [loadingMore, activeTab, loadMoreContent, hasMore]);
 
-    // Reset observer when changing tabs
     useEffect(() => {
         if (observer.current) observer.current.disconnect();
     }, [activeTab]);
@@ -314,7 +332,7 @@ const Recommendations = () => {
     const fetchMovieRecommendations = async (movieId, allWatchedMovieIds) => {
         try {
             const response = await axios.get(
-                `https://api.themoviedb.org/3/movie/${movieId}/recommendations?api_key=${TMDB_API_KEY}`
+                `https://api.themoviedb.org/3/movie/${movieId}/recommendations?api_key=${TMDB_API_KEY}&include_adult=false&with_original_language=en`
             );
 
             const filteredRecommendations = response.data.results.filter(movie =>
@@ -331,7 +349,7 @@ const Recommendations = () => {
     const fetchTvShowRecommendations = async (showId, allWatchedTvShowIds) => {
         try {
             const response = await axios.get(
-                `https://api.themoviedb.org/3/tv/${showId}/recommendations?api_key=${TMDB_API_KEY}`
+                `https://api.themoviedb.org/3/tv/${showId}/recommendations?api_key=${TMDB_API_KEY}&include_adult=false&with_original_language=en`
             );
 
             const filtered = response.data.results.filter(show =>
@@ -361,7 +379,7 @@ const Recommendations = () => {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-[#151a24]">
+            <div className="min-h-screen bg-black">
                 <Navbar />
                 <div className="max-w-7xl mx-auto px-4 py-8 pt-24">
                     <div className="flex justify-center items-center min-h-[400px]">
@@ -374,10 +392,12 @@ const Recommendations = () => {
 
     if (error) {
         return (
-            <div className="min-h-screen bg-[#151a24]">
+            <div className="min-h-screen bg-black">
                 <Navbar />
                 <div className="max-w-7xl mx-auto px-4 py-8 pt-24">
-                    <div className="text-center text-red-500">{error}</div>
+                    <div className="bg-red-900/30 border border-red-500 text-red-400 p-4 rounded-lg text-center">
+                        {error}
+                    </div>
                 </div>
             </div>
         );
@@ -388,7 +408,7 @@ const Recommendations = () => {
             case 'movies':
                 return (
                     <div ref={contentRef}>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
                             {recommendedMovies.map((movie, index) => {
                                 if (recommendedMovies.length === index + 1) {
                                     return (
@@ -411,7 +431,7 @@ const Recommendations = () => {
             case 'tvShows':
                 return (
                     <div ref={contentRef}>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
                             {recommendedTvShows.map((show, index) => {
                                 if (recommendedTvShows.length === index + 1) {
                                     return (
@@ -434,7 +454,7 @@ const Recommendations = () => {
             case 'anime':
                 return (
                     <div ref={contentRef}>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
                             {recommendedAnime.map((anime, index) => {
                                 if (recommendedAnime.length === index + 1) {
                                     return (
@@ -460,53 +480,69 @@ const Recommendations = () => {
     };
 
     return (
-        <div className="min-h-screen bg-[#151a24]">
+        <div className="min-h-screen bg-black">
             <Navbar />
             <div className="max-w-7xl mx-auto px-4 py-8 pt-24">
-                <div className="backdrop-blur-md bg-white/10 rounded-lg shadow-md p-6 mb-8 border border-white/20">
-                    <h1 className="text-3xl font-bold mb-4 text-white">Your Personalized Recommendations</h1>
-                    <p className="text-gray-300">
-                        Based on your watch history and ratings, we've analyzed your preferences to recommend content
-                        you're likely to enjoy. Our AI considers factors like genres, themes, directors, and more to
-                        provide tailored suggestions.
-                    </p>
-                </div>
-
-                {/* Tab Navigation */}
-                <div className="flex justify-center mb-8">
-                    <div className="flex space-x-2 backdrop-blur-md bg-white/10 rounded-lg p-1 shadow-md border border-white/20">
+                {/* Hero Section */}
+                <div className="mb-10">
+                    <div className="flex justify-between items-start mb-4">
+                        <div>
+                            <h1 className="text-4xl font-bold text-white mb-3">Recommended For You</h1>
+                            <p className="text-gray-400 text-lg max-w-3xl">
+                                Personalized picks based on your watching history and preferences
+                            </p>
+                        </div>
                         <button
-                            onClick={() => setActiveTab('movies')}
-                            className={`px-4 py-2 rounded-md transition-colors ${
-                                activeTab === 'movies' ? 'bg-blue-500 text-white' : 'text-gray-300 hover:bg-white/20'
-                            }`}
+                            onClick={handleRefresh}
+                            disabled={refreshing}
+                            className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-500/20"
                         >
-                            Movies
-                        </button>
-                        <button
-                            onClick={() => setActiveTab('tvShows')}
-                            className={`px-4 py-2 rounded-md transition-colors ${
-                                activeTab === 'tvShows' ? 'bg-blue-500 text-white' : 'text-gray-300 hover:bg-white/20'
-                            }`}
-                        >
-                            TV Shows
-                        </button>
-                        <button
-                            onClick={() => setActiveTab('anime')}
-                            className={`px-4 py-2 rounded-md transition-colors ${
-                                activeTab === 'anime' ? 'bg-blue-500 text-white' : 'text-gray-300 hover:bg-white/20'
-                            }`}
-                        >
-                            Anime
+                            <svg 
+                                className={`w-5 h-5 ${refreshing ? 'animate-spin' : ''}`} 
+                                fill="none" 
+                                stroke="currentColor" 
+                                viewBox="0 0 24 24"
+                            >
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                            {refreshing ? 'Refreshing...' : 'Refresh'}
                         </button>
                     </div>
                 </div>
 
+                {/* Tab Navigation */}
+                <div className="flex items-center gap-2 border-b border-gray-800 mb-8">
+                    {['movies', 'tvShows', 'anime'].map((tab) => {
+                        const labels = { movies: 'Movies', tvShows: 'TV Shows', anime: 'Anime' };
+                        return (
+                            <button
+                                key={tab}
+                                onClick={() => setActiveTab(tab)}
+                                className={`px-6 py-3 font-semibold text-lg whitespace-nowrap transition-all duration-300 relative ${
+                                    activeTab === tab
+                                        ? 'text-white'
+                                        : 'text-gray-400 hover:text-white'
+                                }`}
+                            >
+                                {labels[tab]}
+                                {activeTab === tab && (
+                                    <div className="absolute bottom-0 left-0 right-0 h-1 bg-blue-600" />
+                                )}
+                            </button>
+                        );
+                    })}
+                </div>
+
                 {movies.length === 0 && tvShows.length === 0 && anime.length === 0 ? (
-                    <div className="backdrop-blur-md bg-white/10 rounded-lg shadow-md p-6 text-center border border-white/20">
-                        <h2 className="text-xl font-semibold mb-4 text-white">No Recommendations Yet</h2>
-                        <p className="text-gray-300">
-                            To get personalized recommendations, start watching and rating some content!
+                    <div className="text-center py-20">
+                        <div className="inline-block p-6 bg-gray-900 rounded-full mb-6">
+                            <svg className="w-16 h-16 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                            </svg>
+                        </div>
+                        <h2 className="text-2xl font-bold text-white mb-3">No Recommendations Yet</h2>
+                        <p className="text-gray-400 text-lg max-w-md mx-auto">
+                            Start watching and rating content to get personalized recommendations tailored just for you!
                         </p>
                     </div>
                 ) : (
