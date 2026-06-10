@@ -43,6 +43,7 @@ const Landing = () => {
   const observer = useRef();
   const observerTriggerRef = useRef(null);
 
+
   useEffect(() => {
     console.log('State changed:', { 
       activeTab, 

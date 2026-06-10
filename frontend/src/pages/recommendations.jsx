@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../components/navbar";
@@ -7,6 +7,37 @@ import TvShowCard from "../components/Tvshowcard";
 import AnimeCard from "../components/Animecard";
 
 const TMDB_API_KEY = "0ace2af581de1152e9f38a6c477220b8";
+const Endpoint = "https://s72-raphael-watchwise.onrender.com";
+//http://localhost:3000
+
+/**
+ * Fire-and-forget helper — records a click interaction with the backend
+ * recommendation engine. Failures are silently swallowed so they never
+ * interrupt the user's navigation.
+ */
+const trackClick = async (token, mediaType, item) => {
+    try {
+        const genreIds =
+            mediaType === "anime"
+                ? (item.genres || []).map((g) => g.mal_id)
+                : item.genre_ids || [];
+
+        await axios.post(
+            `${Endpoint}/api/recommendations/interact`,
+            {
+                mediaType,
+                mediaId: String(mediaType === "anime" ? item.mal_id : item.id),
+                mediaTitle: item.title || item.name || item.title_english || "",
+                eventType: "click",
+                genreIds,
+                metadata: { popularity: item.popularity || item.score || 0 },
+            },
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
+    } catch {
+        // Non-critical — don't surface tracking errors to the user
+    }
+};
 
 const Recommendations = () => {
     const navigate = useNavigate();
@@ -94,25 +125,31 @@ const Recommendations = () => {
             }
             
             const [movieResponse, tvResponse, animeResponse] = await Promise.all([
-                axios.get("https://s72-raphael-watchwise.onrender.com/api/profile/movies", {
+                //https://s72-raphael-watchwise.onrender.com/api/profile/movies
+                //http://localhost:3000/api/profile/movies
+                axios.get(`${Endpoint}/api/profile/movies`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 }),
-                axios.get("https://s72-raphael-watchwise.onrender.com/api/profile/tvshows", {
+                //https://s72-raphael-watchwise.onrender.com/api/profile/tvshows
+                //http://localhost:3000/api/profile/tvshows
+                axios.get(`${Endpoint}/api/profile/tvshows`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 }),
-                axios.get("https://s72-raphael-watchwise.onrender.com/api/profile/anime", {
+                //https://s72-raphael-watchwise.onrender.com/api/profile/anime
+                //http://localhost:3000/api/profile/anime
+                axios.get(`${Endpoint}/api/profile/anime`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 })
             ]);
 
-            const watchedOrInProgressMovies = movieResponse.data.movies.filter(movie =>
-                movie.watchStatus !== 'not_planning_to_watch'
+            const watchedOrInProgressMovies = (movieResponse.data.movies || []).filter(movie =>
+                movie.watchStatus !== 'notPlanning'
             );
-            const watchedOrInProgressTvShows = tvResponse.data.tvShows.filter(show =>
-                show.watchStatus !== 'not_planning_to_watch'
+            const watchedOrInProgressTvShows = (tvResponse.data.tvShows || []).filter(show =>
+                show.watchStatus !== 'notPlanning'
             );
-            const watchedOrInProgressAnime = animeResponse.data.anime.filter(item =>
-                item.watchStatus !== 'not_planning_to_watch'
+            const watchedOrInProgressAnime = (animeResponse.data.anime || []).filter(item =>
+                item.watchStatus !== 'notPlanning'
             );
 
             setMovies(watchedOrInProgressMovies);
@@ -403,6 +440,8 @@ const Recommendations = () => {
         );
     }
 
+    const token = localStorage.getItem('token');
+
     const renderContent = () => {
         switch (activeTab) {
             case 'movies':
@@ -410,15 +449,18 @@ const Recommendations = () => {
                     <div ref={contentRef}>
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
                             {recommendedMovies.map((movie, index) => {
+                                const card = (
+                                    <div
+                                        key={movie.id}
+                                        onClick={() => trackClick(token, "movie", movie)}
+                                    >
+                                        <MovieCard movie={movie} />
+                                    </div>
+                                );
                                 if (recommendedMovies.length === index + 1) {
-                                    return (
-                                        <div key={movie.id} ref={lastElementRef}>
-                                            <MovieCard movie={movie} />
-                                        </div>
-                                    );
-                                } else {
-                                    return <MovieCard key={movie.id} movie={movie} />;
+                                    return <div key={movie.id} ref={lastElementRef}>{card}</div>;
                                 }
+                                return card;
                             })}
                         </div>
                         {loadingMore && (
@@ -433,15 +475,18 @@ const Recommendations = () => {
                     <div ref={contentRef}>
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
                             {recommendedTvShows.map((show, index) => {
+                                const card = (
+                                    <div
+                                        key={show.id}
+                                        onClick={() => trackClick(token, "tvshow", show)}
+                                    >
+                                        <TvShowCard show={show} />
+                                    </div>
+                                );
                                 if (recommendedTvShows.length === index + 1) {
-                                    return (
-                                        <div key={show.id} ref={lastElementRef}>
-                                            <TvShowCard show={show} />
-                                        </div>
-                                    );
-                                } else {
-                                    return <TvShowCard key={show.id} show={show} />;
+                                    return <div key={show.id} ref={lastElementRef}>{card}</div>;
                                 }
+                                return card;
                             })}
                         </div>
                         {loadingMore && (
@@ -456,15 +501,18 @@ const Recommendations = () => {
                     <div ref={contentRef}>
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
                             {recommendedAnime.map((anime, index) => {
+                                const card = (
+                                    <div
+                                        key={anime.mal_id}
+                                        onClick={() => trackClick(token, "anime", anime)}
+                                    >
+                                        <AnimeCard anime={anime} />
+                                    </div>
+                                );
                                 if (recommendedAnime.length === index + 1) {
-                                    return (
-                                        <div key={anime.mal_id} ref={lastElementRef}>
-                                            <AnimeCard anime={anime} />
-                                        </div>
-                                    );
-                                } else {
-                                    return <AnimeCard key={anime.mal_id} anime={anime} />;
+                                    return <div key={anime.mal_id} ref={lastElementRef}>{card}</div>;
                                 }
+                                return card;
                             })}
                         </div>
                         {loadingMore && (

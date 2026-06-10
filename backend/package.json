@@ -5,9 +5,14 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "nodemon server.js"
+    "dev": "nodemon server.js",
+    "ingest": "node scripts/ingestItems.js",
+    "ingest:movies": "node scripts/ingestItems.js --type movie",
+    "ingest:tvshows": "node scripts/ingestItems.js --type tvshow",
+    "ingest:anime": "node scripts/ingestItems.js --type anime"
   },
   "dependencies": {
+    "axios": "^1.7.9",
     "bcrypt": "^5.1.1",
     "bcryptjs": "^3.0.2",
     "cors": "^2.8.5",
@@ -15,7 +20,8 @@
     "express": "^4.21.2",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.12.1",
-    "multer": "^1.4.5-lts.1"
+    "multer": "^1.4.5-lts.1",
+    "pg": "^8.13.3"
   },
   "devDependencies": {
     "nodemon": "^3.0.2"

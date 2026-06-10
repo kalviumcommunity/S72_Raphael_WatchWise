@@ -6,6 +6,21 @@ import MovieCard from "../components/Moviecard";
 
 const API_KEY = "0ace2af581de1152e9f38a6c477220b8";
 const TV_DETAILS_URL = "https://api.themoviedb.org/3/tv/";
+const Endpoint = "https://s72-raphael-watchwise.onrender.com";
+//http://localhost:3000
+
+/**
+ * Fire-and-forget interaction tracker.
+ */
+const trackInteraction = async (token, payload) => {
+    try {
+        await axios.post(`${Endpoint}/api/recommendations/interact`, payload, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+    } catch {
+        // Non-critical — swallow silently
+    }
+};
 
 const WATCH_STATUS = {
   NOT_PLANNING: 'notPlanning',
@@ -152,8 +167,9 @@ const TvShowDetails = () => {
         setIsAuthenticated(false);
         return null;
       }
-
-      const response = await axios.get(`https://s72-raphael-watchwise.onrender.com/api/profile/tvshows/${id}`, {
+      //https://s72-raphael-watchwise.onrender.com/api/profile/tvshows/${id}
+      //http://localhost:3000/api/profile/tvshows/${id}
+      const response = await axios.get(`${Endpoint}/api/profile/tvshows/${id}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -192,8 +208,9 @@ const TvShowDetails = () => {
         showTitle: show.name,
         posterPath: show.poster_path || ''
       };
-
-      const response = await axios.put(`https://s72-raphael-watchwise.onrender.com/api/profile/tvshows/${id}`, showData, {
+      //https://s72-raphael-watchwise.onrender.com/api/profile/tvshows/${id}
+      //http://localhost:3000/api/profile/tvshows/${id}
+      const response = await axios.put(`${Endpoint}/api/profile/tvshows/${id}`, showData, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -203,6 +220,29 @@ const TvShowDetails = () => {
       if (response.data.showStatus) {
         setWatchStatus(response.data.showStatus.watchStatus);
         setRating(response.data.showStatus.rating || 0);
+      }
+
+      // Track the watchStatus change for the recommendation engine
+      trackInteraction(token, {
+          mediaType: 'tvshow',
+          mediaId: String(id),
+          mediaTitle: show.name,
+          eventType: 'watchStatus',
+          watchStatus: newStatus,
+          rating: newRating || null,
+          genreIds: (show.genres || []).map((g) => g.id),
+          metadata: { popularity: show.popularity },
+      });
+
+      if (newRating >= 7) {
+          trackInteraction(token, {
+              mediaType: 'tvshow',
+              mediaId: String(id),
+              mediaTitle: show.name,
+              eventType: 'like',
+              rating: newRating,
+              genreIds: (show.genres || []).map((g) => g.id),
+          });
       }
 
       setTimeout(() => setUpdateStatus(''), 2000);
@@ -261,6 +301,17 @@ const TvShowDetails = () => {
     <div className="bg-[#151a24] min-h-screen w-full">
       <div className="max-w-4xl mx-auto mt-20 p-6">
         <Navbar />
+
+        {/* Back button */}
+        <button
+          onClick={() => navigate(-1)}
+          className="flex items-center gap-2 mb-6 px-4 py-2 rounded-lg backdrop-blur-md bg-white/10 border border-white/20 text-white hover:bg-white/20 transition-all duration-200"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
+          </svg>
+          Back
+        </button>
 
         <div className="backdrop-blur-md bg-white/10 shadow-lg rounded-lg p-6 w-full">
           <div className="flex flex-col md:flex-row flex-wrap items-center md:items-start w-full">

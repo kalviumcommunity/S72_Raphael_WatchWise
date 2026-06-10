@@ -34,6 +34,13 @@ const user = require("./controller/user");
 const movie = require("./controller/movie");
 const tvshow = require("./controller/tvshow");
 const anime = require("./controller/anime");
+const recommendations = require("./routes/recommendations");
+const { initSchema } = require("./services/vectorStore");
+
+// Initialise pgvector schema (non-blocking — server starts even if PG is down)
+initSchema().catch((err) =>
+    console.warn("[vectorStore] Startup init skipped:", err.message)
+);
 
 // Auth routes
 app.use("/api/auth", user.authRouter);
@@ -42,6 +49,8 @@ app.use("/api/profile", user.router);
 app.use("/api/profile/movies", movie);
 app.use("/api/profile/tvshows", tvshow);
 app.use("/api/profile/anime", anime);
+// Personalised recommendation routes
+app.use("/api/recommendations", recommendations);
 
 app.listen(port, () => {
   console.log(`✅ Server is running at http://localhost:${port}`);

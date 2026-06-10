@@ -16,6 +16,8 @@ function Signup({ setIsAuthenticated }) {
     const [backgroundMovies, setBackgroundMovies] = useState([]);
     const [currentMovieIndex, setCurrentMovieIndex] = useState(0);
     const navigate = useNavigate();
+    const Endpoint = "https://s72-raphael-watchwise.onrender.com";
+    //http://localhost:3000
 
     // Fetch top rated movies for background carousel
     useEffect(() => {
@@ -56,7 +58,9 @@ function Signup({ setIsAuthenticated }) {
         setIsLoading(true);
 
         try {
-            const response = await axios.post('https://s72-raphael-watchwise.onrender.com/api/auth/register', {
+            //https://s72-raphael-watchwise.onrender.com/api/auth/register
+            //http://localhost:3000/api/auth/register
+            const response = await axios.post(`${Endpoint}/api/auth/register`, {
                 name,
                 email,
                 password

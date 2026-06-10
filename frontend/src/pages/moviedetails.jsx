@@ -7,6 +7,22 @@ import MovieCard from "../components/Moviecard";
 
 const API_KEY = "0ace2af581de1152e9f38a6c477220b8";
 const MOVIE_DETAILS_URL = "https://api.themoviedb.org/3/movie/";
+const Endpoint = "https://s72-raphael-watchwise.onrender.com";
+//http://localhost:3000
+
+/**
+ * Fire-and-forget interaction tracker.
+ * Sends a signal to the recommendation engine without blocking the UI.
+ */
+const trackInteraction = async (token, payload) => {
+    try {
+        await axios.post(`${Endpoint}/api/recommendations/interact`, payload, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+    } catch {
+        // Non-critical — swallow silently
+    }
+};
 
 const WATCH_STATUS = {
   NOT_PLANNING: 'notPlanning',
@@ -52,6 +68,7 @@ const MovieDetails = () => {
   const [loadingSimilar, setLoadingSimilar] = useState(false);
   const [similarPage, setSimilarPage] = useState(1);
   const [hasMoreSimilar, setHasMoreSimilar] = useState(true);
+
 
   useEffect(() => {
     // Reset states immediately when movie ID changes
@@ -155,8 +172,9 @@ const MovieDetails = () => {
         setIsAuthenticated(false);
         return null;
       }
-
-      const response = await axios.get(`https://s72-raphael-watchwise.onrender.com/api/profile/movies/${id}`, {
+      //https://s72-raphael-watchwise.onrender.com/api/profile/movies/${id}
+      //http://localhost:3000/api/profile/movies/${id}
+      const response = await axios.get(`${Endpoint}/api/profile/movies/${id}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -201,8 +219,10 @@ const MovieDetails = () => {
       };
 
       console.log('Sending update request:', movieData);
-      
-      const response = await axios.put(`https://s72-raphael-watchwise.onrender.com/api/profile/movies/${id}`, movieData, {
+
+      //https://s72-raphael-watchwise.onrender.com/api/profile/movies/${id}
+      //http://localhost:3000/api/profile/movies/${id}
+      const response = await axios.put(`${Endpoint}/api/profile/movies/${id}`, movieData, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -215,6 +235,30 @@ const MovieDetails = () => {
       if (response.data.movieStatus) {
         setWatchStatus(response.data.movieStatus.watchStatus);
         setRating(response.data.movieStatus.rating || 0);
+      }
+
+      // Track the watchStatus change for the recommendation engine
+      trackInteraction(token, {
+          mediaType: 'movie',
+          mediaId: String(id),
+          mediaTitle: movie.title,
+          eventType: 'watchStatus',
+          watchStatus: newStatus,
+          rating: newRating || null,
+          genreIds: (movie.genres || []).map((g) => g.id),
+          metadata: { popularity: movie.popularity },
+      });
+
+      // If the user gave a high rating (>= 7), also fire a 'like' event
+      if (newRating >= 7) {
+          trackInteraction(token, {
+              mediaType: 'movie',
+              mediaId: String(id),
+              mediaTitle: movie.title,
+              eventType: 'like',
+              rating: newRating,
+              genreIds: (movie.genres || []).map((g) => g.id),
+          });
       }
 
       // setUpdateStatus('Updated successfully!');
@@ -280,6 +324,17 @@ const MovieDetails = () => {
       <div className="min-h-screen bg-[#151a24]">
         <div className="max-w-4xl mx-auto mt-20 p-6 bg-[#151a24]">
           <Navbar />
+
+          {/* Back button */}
+          <button
+            onClick={() => navigate(-1)}
+            className="flex items-center gap-2 mb-6 px-4 py-2 rounded-lg backdrop-blur-md bg-white/10 border border-white/20 text-white hover:bg-white/20 transition-all duration-200"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
+            </svg>
+            Back
+          </button>
 
           <div className="backdrop-blur-md bg-white/10 shadow-lg rounded-lg p-6 w-full">
   <div className="flex flex-col md:flex-row flex-wrap items-center md:items-start w-full">

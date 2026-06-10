@@ -29,7 +29,7 @@ services:
       - "3000:3000"
     environment:
       NODE_ENV: development
-      MONGO_URI: mongodb://admin:password123@mongodb:27017/watchwise?authSource=admin
+      MONGO_URI: mongodb+srv://Raphael:raphdesantos@cluster0.wmcoy.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0
       JWT_SECRET: your-super-secret-jwt-key-change-this-in-production
       PORT: 3000
     depends_on:

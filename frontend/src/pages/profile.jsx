@@ -4,6 +4,9 @@ import axios from 'axios';
 import Navbar from '../components/navbar';
 import { TextField } from '@mui/material';
 
+const Endpoint = "https://s72-raphael-watchwise.onrender.com";
+//http://localhost:3000
+
 const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm }) => {
     if (!isOpen) return null;
 
@@ -362,7 +365,9 @@ const Profile = () => {
 
             // console.log("Fetching profile with token:", token.substring(0, 10) + '...');
             
-            const response = await axios.get('https://s72-raphael-watchwise.onrender.com/api/profile/me', {
+            //https://s72-raphael-watchwise.onrender.com/api/profile/me
+            //http://localhost:3000/api/profile/me
+            const response = await axios.get(`${Endpoint}/api/profile/me`, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
@@ -436,7 +441,9 @@ const Profile = () => {
             //     console.log(pair[0] + ': ' + pair[1]);
             // }
 
-            const response = await axios.put('https://s72-raphael-watchwise.onrender.com/api/profile/me', formData, {
+            //https://s72-raphael-watchwise.onrender.com/api/profile/me
+            //http://localhost:3000/api/profile/me
+            const response = await axios.put(`${Endpoint}/api/profile/me`, formData, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'multipart/form-data'
@@ -476,7 +483,9 @@ const Profile = () => {
 
         try {
             const token = localStorage.getItem('token');
-            await axios.put('https://s72-raphael-watchwise.onrender.com/api/profile/me/password', {
+            //https://s72-raphael-watchwise.onrender.com/api/profile/me/password
+            //http://localhost:3000/api/profile/me/password
+            await axios.put(`${Endpoint}/api/profile/me/password`, {
                 currentPassword: currentPassword,
                 newPassword: newPassword
             }, {
@@ -503,7 +512,9 @@ const Profile = () => {
     const handleDeleteAccount = async () => {
         try {
             const token = localStorage.getItem('token');
-            await axios.delete('https://s72-raphael-watchwise.onrender.com/api/profile/me', {
+            //https://s72-raphael-watchwise.onrender.com/api/profile/me
+            //http://localhost:3000/api/profile/me
+            await axios.delete(`${Endpoint}/api/profile/me`, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
@@ -537,7 +548,9 @@ const Profile = () => {
         
         // Normalize path by replacing backslashes with forward slashes
         const normalizedPath = imagePath.replace(/\\/g, '/');
-        return `https://s72-raphael-watchwise.onrender.com/${normalizedPath}`;
+        //https://s72-raphael-watchwise.onrender.com/${normalizedPath}
+        //http://localhost:3000/${normalizedPath}
+        return `${Endpoint}/${normalizedPath}`;
     };
 
     if (loading) {

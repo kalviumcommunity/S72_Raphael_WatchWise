@@ -4,6 +4,21 @@ import axios from "axios";
 import Navbar from "../components/navbar";
 
 const ANIME_DETAILS_URL = "https://api.jikan.moe/v4/anime/";
+  const Endpoint = "https://s72-raphael-watchwise.onrender.com";
+  //http://localhost:3000
+
+/**
+ * Fire-and-forget interaction tracker.
+ */
+const trackInteraction = async (token, payload) => {
+    try {
+        await axios.post(`${Endpoint}/api/recommendations/interact`, payload, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+    } catch {
+        // Non-critical — swallow silently
+    }
+};
 
 const WATCH_STATUS = {
   NOT_PLANNING: 'notPlanning',
@@ -118,8 +133,9 @@ const AnimeDetails = () => {
         setIsAuthenticated(false);
         return null;
       }
-
-      const response = await axios.get(`https://s72-raphael-watchwise.onrender.com/api/profile/anime/${id}`, {
+      //https://s72-raphael-watchwise.onrender.com/api/profile/anime/${id}
+      //http://localhost:3000/api/profile/anime/${id}
+      const response = await axios.get(`${Endpoint}/api/profile/anime/${id}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -167,8 +183,9 @@ const AnimeDetails = () => {
         animeTitle: anime.title,
         posterPath: anime.images.jpg.large_image_url || ''
       };
-
-      const response = await axios.put(`https://s72-raphael-watchwise.onrender.com/api/profile/anime/${id}`, animeData, {
+      //https://s72-raphael-watchwise.onrender.com/api/profile/anime/${id}
+      //http://localhost:3000/api/profile/anime/${id}
+      const response = await axios.put(`${Endpoint}/api/profile/anime/${id}`, animeData, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -178,6 +195,29 @@ const AnimeDetails = () => {
       if (response.data.animeStatus) {
         setWatchStatus(response.data.animeStatus.watchStatus);
         setRating(response.data.animeStatus.rating || 0);
+      }
+
+      // Track the watchStatus change for the recommendation engine
+      trackInteraction(token, {
+          mediaType: 'anime',
+          mediaId: String(id),
+          mediaTitle: anime.title,
+          eventType: 'watchStatus',
+          watchStatus: newStatus,
+          rating: newRating || null,
+          genreIds: (anime.genres || []).map((g) => g.mal_id),
+          metadata: { score: anime.score },
+      });
+
+      if (newRating >= 7) {
+          trackInteraction(token, {
+              mediaType: 'anime',
+              mediaId: String(id),
+              mediaTitle: anime.title,
+              eventType: 'like',
+              rating: newRating,
+              genreIds: (anime.genres || []).map((g) => g.mal_id),
+          });
       }
 
       setTimeout(() => setUpdateStatus(''), 2000);
@@ -232,6 +272,17 @@ const AnimeDetails = () => {
     <div className="bg-[#151a24] min-h-screen w-full">
       <div className="max-w-4xl mx-auto mt-20 p-6">
         <Navbar />
+
+        {/* Back button */}
+        <button
+          onClick={() => navigate(-1)}
+          className="flex items-center gap-2 mb-6 px-4 py-2 rounded-lg backdrop-blur-md bg-white/10 border border-white/20 text-white hover:bg-white/20 transition-all duration-200"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
+          </svg>
+          Back
+        </button>
 
         <div className="backdrop-blur-md bg-white/10 shadow-lg rounded-lg p-6 w-full">
           <div className="flex flex-col md:flex-row flex-wrap items-center md:items-start w-full">

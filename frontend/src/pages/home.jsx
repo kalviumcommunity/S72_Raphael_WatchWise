@@ -48,23 +48,31 @@ const Home = () => {
     tvShows: {},
     anime: {}
   });
+  const Endpoint = "https://s72-raphael-watchwise.onrender.com";
+  //http://localhost:3000
 
   const fetchStats = async (token) => {
     try {
       const [movieResponse, tvResponse, animeResponse] = await Promise.all([
-        axios.get('https://s72-raphael-watchwise.onrender.com/api/profile/movies', {
+        //https://s72-raphael-watchwise.onrender.com/api/profile/movies
+        //http://localhost:3000/api/profile/movies
+        axios.get(`${Endpoint}/api/profile/movies`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
           }
         }),
-        axios.get('https://s72-raphael-watchwise.onrender.com/api/profile/tvshows', {
+        //https://s72-raphael-watchwise.onrender.com/api/profile/tvshows
+        //http://localhost:3000/apu/profile/tvshows
+        axios.get(`${Endpoint}/apu/profile/tvshows`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
           }
         }),
-        axios.get('https://s72-raphael-watchwise.onrender.com/api/profile/anime', {
+        //https://s72-raphael-watchwise.onrender.com/api/profile/anime
+        //http://localhost:3000/api/profile/anime
+        axios.get(`${Endpoint}/api/profile/anime`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -109,19 +117,25 @@ const Home = () => {
       try {
         setLoading(prev => ({ ...prev, movies: true }));
         const [movieResponse, tvResponse, animeResponse] = await Promise.all([
-          axios.get('https://s72-raphael-watchwise.onrender.com/api/profile/movies', {
+          //https://s72-raphael-watchwise.onrender.com/api/profile/movies
+          //http://localhost:3000/api/profile/movies
+          axios.get(`${Endpoint}/api/profile/movies`, {
             headers: {
               'Authorization': `Bearer ${token}`,
               'Content-Type': 'application/json'
             }
           }),
-          axios.get('https://s72-raphael-watchwise.onrender.com/api/profile/tvshows', {
+          //https://s72-raphael-watchwise.onrender.com/api/profile/tvshows
+          //http://localhost:3000/api/profile/tvshows
+          axios.get(`${Endpoint}/api/profile/tvshows`, {
             headers: {
               'Authorization': `Bearer ${token}`,
               'Content-Type': 'application/json'
             }
           }),
-          axios.get('https://s72-raphael-watchwise.onrender.com/api/profile/anime', {
+          //https://s72-raphael-watchwise.onrender.com/api/profile/anime
+          //http://localhost:3000/api/profile/anime
+          axios.get(`${Endpoint}/api/profile/anime`, {
             headers: {
               'Authorization': `Bearer ${token}`,
               'Content-Type': 'application/json'
