@@ -66,9 +66,17 @@ function Signup({ setIsAuthenticated }) {
                 password
             });
             
-            localStorage.setItem('token', response.data.token);
-            setIsAuthenticated(true);
-            navigate('/');
+            if (response.data && response.data.token) {
+                localStorage.setItem('token', response.data.token);
+                localStorage.setItem('rememberMe', 'true');
+                if (response.data.user) {
+                    localStorage.setItem('user', JSON.stringify(response.data.user));
+                }
+                setIsAuthenticated(true);
+                navigate('/');
+            } else {
+                navigate('/login');
+            }
         } catch (error) {
             setError(error.response?.data?.error || 'An error occurred during registration');
         } finally {

@@ -14,7 +14,14 @@ import About from './pages/about';
 import Recommendations from './pages/recommendations';
 
 function App(){
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    const token = localStorage.getItem("token");
+    if (token === "undefined" || token === "null") {
+      localStorage.removeItem("token");
+      return false;
+    }
+    return !!token;
+  });
   return(
   <SearchProvider>
     <Router>

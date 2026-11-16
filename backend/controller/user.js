@@ -110,13 +110,28 @@ authRouter.post("/register", (req, res) => {
             const newUser = new User(userData);
             const savedUser = await newUser.save();
 
+            // Generate persistent JWT token (30 days)
+            const token = jwt.sign(
+                { id: savedUser._id.toString() },
+                process.env.JWT_SECRET || 'your-secret-key',
+                { expiresIn: "30d" }
+            );
+
             console.log("User registered:", {
                 email: savedUser.email,
                 hashedPasswordLength: savedUser.password?.length,
                 hasPassword: !!savedUser.password
             });
 
-            res.status(201).json({ message: "User registered successfully" });
+            res.status(201).json({
+                message: "User registered successfully",
+                token,
+                user: {
+                    id: savedUser._id.toString(),
+                    name: savedUser.name,
+                    email: savedUser.email
+                }
+            });
         } catch (error) {
             console.error("Registration error:", error);
             res.status(500).json({ error: "Server error" });
@@ -158,11 +173,11 @@ authRouter.post("/login", async (req, res) => {
                 return res.status(400).json({ error: "Incorrect password" });
             }
 
-            // Generate JWT token with user ID (30 days if rememberMe, otherwise 1 hour)
+            // Generate JWT token with user ID (persistent 30-day session)
             const token = jwt.sign(
                 { id: user._id.toString() }, 
                 process.env.JWT_SECRET || 'your-secret-key',
-                { expiresIn: rememberMe ? "30d" : "1h" }
+                { expiresIn: "30d" }
             );
 
             // Log the token details for debugging

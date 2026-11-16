@@ -10,7 +10,8 @@ const Login = ({ setIsAuthenticated }) => {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [rememberMe, setRememberMe] = useState(() => {
-        return localStorage.getItem("rememberMe") === "true";
+        const saved = localStorage.getItem("rememberMe");
+        return saved !== null ? saved === "true" : true;
     });
     const [error, setError] = useState("");
     const [isLoading, setIsLoading] = useState(false);

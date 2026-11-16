@@ -107,10 +107,26 @@ const trackClick = async (token, mediaType, item) => {
     }
 };
 
+const deduplicateMedia = (items = []) => {
+    const seen = new Set();
+    const unique = [];
+    for (const item of items) {
+        if (!item) continue;
+        const id = String(item.mal_id || item.id);
+        if (!id || id === 'undefined' || id === 'null') continue;
+        if (!seen.has(id)) {
+            seen.add(id);
+            unique.push(item);
+        }
+    }
+    return unique;
+};
+
 const getRecommendationsFromStorage = (type) => {
     try {
         const stored = localStorage.getItem(`recommendations_${type}`);
-        return stored ? JSON.parse(stored) : [];
+        const parsed = stored ? JSON.parse(stored) : [];
+        return deduplicateMedia(parsed);
     } catch (error) {
         console.error(`Error retrieving ${type} recommendations:`, error);
         return [];
@@ -189,6 +205,7 @@ const Recommendations = () => {
     const observer = useRef();
     const contentRef = useRef(null);
     const loadingRef = useRef(null);
+    const loadingMoreRef = useRef(false);
     const loadedTabsRef = useRef(new Set());
     const userProfileRef = useRef(null);
 
@@ -415,18 +432,12 @@ const Recommendations = () => {
             movieCandidates = [...movieCandidates, ...curated];
         }
 
-        const uniqueMovieMap = new Map();
-        for (const item of movieCandidates) {
-            if (item?.id && !uniqueMovieMap.has(item.id)) {
-                uniqueMovieMap.set(item.id, item);
-            }
-        }
-        const uniqueMovieCandidates = Array.from(uniqueMovieMap.values());
+        const uniqueMovieCandidates = deduplicateMedia(movieCandidates);
 
         // Prioritize Hollywood movies if top watched movies are Hollywood / English
         const isUserHollywood = topLikedMovies.length === 0 || topLikedMovies.some(m => isHollywoodMedia(m) || m.original_language === 'en');
         const { combined: finalMovieRecs } = partitionAndSortByYear(uniqueMovieCandidates, null, 'en', isUserHollywood);
-        const topMovieRecs = finalMovieRecs.slice(0, 50);
+        const topMovieRecs = deduplicateMedia(finalMovieRecs).slice(0, 50);
 
         setRecommendedMovies(topMovieRecs);
         setHasMore(prev => ({ ...prev, movies: finalMovieRecs.length > 50 }));
@@ -457,17 +468,11 @@ const Recommendations = () => {
             tvCandidates = [...tvCandidates, ...curated];
         }
 
-        const uniqueTvMap = new Map();
-        for (const item of tvCandidates) {
-            if (item?.id && !uniqueTvMap.has(item.id)) {
-                uniqueTvMap.set(item.id, item);
-            }
-        }
-        const uniqueTvCandidates = Array.from(uniqueTvMap.values());
+        const uniqueTvCandidates = deduplicateMedia(tvCandidates);
 
         const isUserHollywood = topLikedShows.length === 0 || topLikedShows.some(s => isHollywoodMedia(s) || s.original_language === 'en');
         const { combined: finalTvRecs } = partitionAndSortByYear(uniqueTvCandidates, null, 'en', isUserHollywood);
-        const topTvRecs = finalTvRecs.slice(0, 50);
+        const topTvRecs = deduplicateMedia(finalTvRecs).slice(0, 50);
 
         setRecommendedTvShows(topTvRecs);
         setHasMore(prev => ({ ...prev, tvShows: finalTvRecs.length > 50 }));
@@ -499,17 +504,10 @@ const Recommendations = () => {
             animeCandidates = [...animeCandidates, ...curated];
         }
 
-        const uniqueAnimeMap = new Map();
-        for (const item of animeCandidates) {
-            const id = item?.mal_id || item?.id;
-            if (id && !uniqueAnimeMap.has(id)) {
-                uniqueAnimeMap.set(id, item);
-            }
-        }
-        const uniqueAnimeCandidates = Array.from(uniqueAnimeMap.values());
+        const uniqueAnimeCandidates = deduplicateMedia(animeCandidates);
 
         const { combined: finalAnimeRecs } = partitionAndSortByYear(uniqueAnimeCandidates);
-        const topAnimeRecs = finalAnimeRecs.slice(0, 50);
+        const topAnimeRecs = deduplicateMedia(finalAnimeRecs).slice(0, 50);
 
         setRecommendedAnime(topAnimeRecs);
         setHasMore(prev => ({ ...prev, anime: finalAnimeRecs.length > 50 }));
@@ -681,9 +679,10 @@ const Recommendations = () => {
 
     const loadMoreContent = useCallback(async (type) => {
         const token = localStorage.getItem('token');
-        if (!token || loadingMore || !hasMore[type]) return;
+        if (!token || loadingMoreRef.current || !hasMore[type]) return;
 
         try {
+            loadingMoreRef.current = true;
             setLoadingMore(true);
 
             const currentRecommendations = type === 'movies' ? recommendedMovies
@@ -698,11 +697,11 @@ const Recommendations = () => {
                 String(type === 'movies' ? item.movieId : type === 'tvShows' ? item.showId : item.animeId)
             );
 
-            const existingRecommendationIds = new Set(
-                currentRecommendations.map(item =>
-                    String(type === 'anime' ? item.mal_id : item.id)
-                )
-            );
+            // Master Set of existing IDs to prevent any duplicate insertion
+            const seenIds = new Set([
+                ...currentRecommendations.map(item => String(type === 'anime' ? item.mal_id : item.id)),
+                ...currentWatchedIds.map(String)
+            ]);
 
             const nextPage = (currentPage[type] || 1) + 1;
             let newRecommendations = [];
@@ -736,10 +735,17 @@ const Recommendations = () => {
                 newRecommendations = curated;
             }
 
-            const uniqueNewRecommendations = newRecommendations.filter(item => {
+            // Deduplicate new incoming recommendations strictly in-place
+            const uniqueNewRecommendations = [];
+            for (const item of newRecommendations) {
+                if (!item) continue;
                 const itemId = String(type === 'anime' ? item.mal_id : item.id);
-                return !existingRecommendationIds.has(itemId);
-            });
+                if (!itemId || itemId === 'undefined' || itemId === 'null') continue;
+                if (!seenIds.has(itemId)) {
+                    seenIds.add(itemId);
+                    uniqueNewRecommendations.push(item);
+                }
+            }
 
             const isUserHollywood = type === 'movies' && (currentWatchedContent.length === 0 || currentWatchedContent.some(m => isHollywoodMedia(m) || m.original_language === 'en'));
             const { combined: sortedUniqueNew } = partitionAndSortByYear(
@@ -753,19 +759,19 @@ const Recommendations = () => {
 
             if (type === 'movies') {
                 setRecommendedMovies(prev => {
-                    const updated = [...prev, ...toAdd];
+                    const updated = deduplicateMedia([...prev, ...toAdd]);
                     localStorage.setItem('recommendations_movies', JSON.stringify(updated));
                     return updated;
                 });
             } else if (type === 'tvShows') {
                 setRecommendedTvShows(prev => {
-                    const updated = [...prev, ...toAdd];
+                    const updated = deduplicateMedia([...prev, ...toAdd]);
                     localStorage.setItem('recommendations_tvShows', JSON.stringify(updated));
                     return updated;
                 });
             } else {
                 setRecommendedAnime(prev => {
-                    const updated = [...prev, ...toAdd];
+                    const updated = deduplicateMedia([...prev, ...toAdd]);
                     localStorage.setItem('recommendations_anime', JSON.stringify(updated));
                     return updated;
                 });
@@ -784,22 +790,23 @@ const Recommendations = () => {
         } catch (error) {
             console.error(`Error loading more ${type}:`, error);
         } finally {
+            loadingMoreRef.current = false;
             setLoadingMore(false);
         }
-    }, [loadingMore, recommendedMovies, recommendedTvShows, recommendedAnime, movies, tvShows, anime, hasMore, currentPage]);
+    }, [recommendedMovies, recommendedTvShows, recommendedAnime, movies, tvShows, anime, hasMore, currentPage]);
 
     const lastElementRef = useCallback(node => {
-        if (loadingMore) return;
+        if (loadingMoreRef.current) return;
         if (observer.current) observer.current.disconnect();
         
         observer.current = new IntersectionObserver(entries => {
-            if (entries[0].isIntersecting && hasMore[activeTab]) {
+            if (entries[0].isIntersecting && hasMore[activeTab] && !loadingMoreRef.current) {
                 loadMoreContent(activeTab);
             }
-        }, { threshold: 0.5 });
+        }, { threshold: 0.2 });
         
         if (node) observer.current.observe(node);
-    }, [loadingMore, activeTab, loadMoreContent, hasMore]);
+    }, [activeTab, loadMoreContent, hasMore]);
 
     useEffect(() => {
         if (observer.current) observer.current.disconnect();
@@ -835,7 +842,7 @@ const Recommendations = () => {
                 );
                 const filtered = (res.data?.results || []).filter(m => m.id && !excludedSet.has(String(m.id)));
                 const { combined: items } = partitionAndSortByYear(filtered, themeId, 'en', true);
-                setThemeContent(prev => ({ ...prev, [cacheKey]: items }));
+                setThemeContent(prev => ({ ...prev, [cacheKey]: deduplicateMedia(items) }));
             } else if (activeTab === 'tvShows') {
                 const kw = themeDef.defaultKeywordIds || '12377';
                 const res = await axios.get(
@@ -843,7 +850,7 @@ const Recommendations = () => {
                 );
                 const filtered = (res.data?.results || []).filter(s => s.id && !excludedSet.has(String(s.id)));
                 const { combined: items } = partitionAndSortByYear(filtered, themeId);
-                setThemeContent(prev => ({ ...prev, [cacheKey]: items }));
+                setThemeContent(prev => ({ ...prev, [cacheKey]: deduplicateMedia(items) }));
             }
         } catch (err) {
             console.warn("Could not fetch thematic recommendations:", err?.message);
@@ -857,8 +864,10 @@ const Recommendations = () => {
             : activeTab === 'tvShows' ? recommendedTvShows
             : recommendedAnime;
 
+        const uniqueBase = deduplicateMedia(baseList);
+
         if (selectedTheme === 'all') {
-            return baseList;
+            return uniqueBase;
         }
 
         const themeDef = THEME_DEFINITIONS.find(t => t.id === selectedTheme);
@@ -866,7 +875,7 @@ const Recommendations = () => {
         const externalThematic = themeContent[cacheKey] || [];
 
         // Filter local recommendations matching this theme
-        const localMatching = baseList.filter(item => {
+        const localMatching = uniqueBase.filter(item => {
             const itemTheme = getItemTheme(item);
             if (itemTheme === selectedTheme) return true;
             if (!themeDef) return false;
@@ -874,22 +883,10 @@ const Recommendations = () => {
             return themeDef.patterns.some(p => text.includes(p));
         });
 
-        // Merge local matching and on-demand discover results, deduplicating by ID
-        const mergedMap = new Map();
-        localMatching.forEach(item => {
-            const id = activeTab === 'anime' ? item.mal_id : item.id;
-            mergedMap.set(id, item);
-        });
-        externalThematic.forEach(item => {
-            const id = activeTab === 'anime' ? item.mal_id : item.id;
-            if (!mergedMap.has(id)) {
-                mergedMap.set(id, item);
-            }
-        });
-
-        const merged = Array.from(mergedMap.values());
+        // Merge local matching and on-demand discover results, deduplicating strictly by ID
+        const merged = deduplicateMedia([...localMatching, ...externalThematic]);
         const { combined: sortedMerged } = partitionAndSortByYear(merged, selectedTheme);
-        return sortedMerged;
+        return deduplicateMedia(sortedMerged);
     }, [activeTab, recommendedMovies, recommendedTvShows, recommendedAnime, selectedTheme, themeContent]);
 
     // Full screen loading indicator (only on very first initial cold load when no cache exists)
@@ -970,7 +967,7 @@ const Recommendations = () => {
                         const itemId = activeTab === 'anime' ? item.mal_id : item.id;
                         const card = (
                             <div
-                                key={itemId}
+                                key={`${activeTab}-${itemId}-${index}`}
                                 onClick={() => trackClick(token, activeTab === 'movies' ? "movie" : activeTab === 'tvShows' ? "tvshow" : "anime", item)}
                             >
                                 {activeTab === 'movies' && <MovieCard movie={item} />}
@@ -979,7 +976,7 @@ const Recommendations = () => {
                             </div>
                         );
                         if (displayedItems.length === index + 1 && selectedTheme === 'all') {
-                            return <div key={itemId} ref={lastElementRef}>{card}</div>;
+                            return <div key={`${activeTab}-${itemId}-last`} ref={lastElementRef}>{card}</div>;
                         }
                         return card;
                     })}

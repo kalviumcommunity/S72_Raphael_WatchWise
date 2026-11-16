@@ -34,9 +34,19 @@ const Navbar = () => {
 
   useEffect(() => {
     // Check if user is authenticated by looking for token
-    const token = localStorage.getItem('token');
-    setIsAuthenticated(!!token);
-  }, []);
+    const checkAuth = () => {
+      const token = localStorage.getItem('token');
+      if (token === 'undefined' || token === 'null') {
+        localStorage.removeItem('token');
+        setIsAuthenticated(false);
+        return;
+      }
+      setIsAuthenticated(!!token);
+    };
+    checkAuth();
+    window.addEventListener('storage', checkAuth);
+    return () => window.removeEventListener('storage', checkAuth);
+  }, [location.pathname]);
 
   useEffect(() => {
     // Handle scroll effect for navbar background
