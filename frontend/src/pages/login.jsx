@@ -9,6 +9,9 @@ const TOP_RATED_MOVIES_URL = `https://api.themoviedb.org/3/discover/movie?api_ke
 const Login = ({ setIsAuthenticated }) => {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+    const [rememberMe, setRememberMe] = useState(() => {
+        return localStorage.getItem("rememberMe") === "true";
+    });
     const [error, setError] = useState("");
     const [isLoading, setIsLoading] = useState(false);
     const [backgroundMovies, setBackgroundMovies] = useState([]);
@@ -17,6 +20,16 @@ const Login = ({ setIsAuthenticated }) => {
 
     const Endpoint = "https://s72-raphael-watchwise.onrender.com";
     //http://localhost:3000
+
+    // Pre-populate email if user chose "Remember me" previously
+    useEffect(() => {
+        const savedRememberMe = localStorage.getItem("rememberMe") === "true";
+        const savedEmail = localStorage.getItem("rememberedEmail");
+        if (savedRememberMe && savedEmail) {
+            setEmail(savedEmail);
+            setRememberMe(true);
+        }
+    }, []);
 
     // Fetch top rated movies for background carousel
     useEffect(() => {
@@ -55,13 +68,21 @@ const Login = ({ setIsAuthenticated }) => {
             //http://localhost:3000/api/auth/login
             const response = await axios.post(`${Endpoint}/api/auth/login`, {
                 email,
-                password
+                password,
+                rememberMe
             });
             
             if (response.data && response.data.token) {
                 localStorage.setItem("token", response.data.token);
+                if (rememberMe) {
+                    localStorage.setItem("rememberedEmail", email);
+                    localStorage.setItem("rememberMe", "true");
+                } else {
+                    localStorage.removeItem("rememberedEmail");
+                    localStorage.removeItem("rememberMe");
+                }
                 setIsAuthenticated(true);
-                navigate("/home");
+                navigate("/");
             } else {
                 setError("Invalid response from server");
             }
@@ -201,10 +222,14 @@ const Login = ({ setIsAuthenticated }) => {
 
                             {/* Remember Me & Help */}
                             <div className="flex items-center justify-between text-sm">
-                                <label className="flex items-center text-gray-400 cursor-pointer group">
+                                <label className="flex items-center text-gray-400 cursor-pointer group select-none">
                                     <input
                                         type="checkbox"
-                                        className="mr-2 h-4 w-4 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                        id="rememberMe"
+                                        name="rememberMe"
+                                        checked={rememberMe}
+                                        onChange={(e) => setRememberMe(e.target.checked)}
+                                        className="mr-2 h-4 w-4 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-blue-500 cursor-pointer accent-blue-600"
                                     />
                                     <span className="group-hover:text-gray-300 transition-colors">Remember me</span>
                                 </label>

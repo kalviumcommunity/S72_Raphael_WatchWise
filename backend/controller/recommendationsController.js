@@ -57,16 +57,69 @@ const VECTOR_TOP_K   = 100; // how many ANN candidates to retrieve before re-ran
 const fetchTmdbCandidates = async (mediaType, seedId) => {
     const endpoint = mediaType === 'movie' ? 'movie' : 'tv';
     try {
-        const { data } = await axios.get(
-            `${TMDB_BASE}/${endpoint}/${seedId}/recommendations`,
-            {
-                params: { api_key: TMDB_KEY, include_adult: false, language: 'en-US', page: 1 },
-                timeout: 5000,
-            }
-        );
-        return data.results || [];
+        const [recsRes, similarRes] = await Promise.allSettled([
+            axios.get(
+                `${TMDB_BASE}/${endpoint}/${seedId}/recommendations`,
+                {
+                    params: { api_key: TMDB_KEY, include_adult: false, language: 'en-US', page: 1 },
+                    timeout: 5000,
+                }
+            ),
+            axios.get(
+                `${TMDB_BASE}/${endpoint}/${seedId}/similar`,
+                {
+                    params: { api_key: TMDB_KEY, include_adult: false, language: 'en-US', page: 1 },
+                    timeout: 5000,
+                }
+            )
+        ]);
+
+        const recs = recsRes.status === 'fulfilled' ? (recsRes.value.data?.results || []) : [];
+        const sim = similarRes.status === 'fulfilled' ? (similarRes.value.data?.results || []) : [];
+        return [...recs, ...sim];
     } catch (err) {
         console.error(`[TMDB] Failed for ${endpoint}/${seedId}:`, err.message);
+        return [];
+    }
+};
+
+const fetchPopularFallback = async (mediaType) => {
+    try {
+        if (mediaType === 'movie') {
+            const { data } = await axios.get(`${TMDB_BASE}/discover/movie`, {
+                params: {
+                    api_key: TMDB_KEY,
+                    sort_by: 'popularity.desc',
+                    'primary_release_date.gte': '2000-01-01',
+                    'vote_count.gte': 200,
+                    include_adult: false,
+                    page: 1,
+                },
+                timeout: 5000,
+            });
+            return data.results || [];
+        } else if (mediaType === 'tvshow') {
+            const { data } = await axios.get(`${TMDB_BASE}/discover/tv`, {
+                params: {
+                    api_key: TMDB_KEY,
+                    sort_by: 'popularity.desc',
+                    'first_air_date.gte': '2000-01-01',
+                    'vote_count.gte': 100,
+                    include_adult: false,
+                    page: 1,
+                },
+                timeout: 5000,
+            });
+            return data.results || [];
+        } else {
+            const { data } = await axios.get(`${JIKAN_BASE}/top/anime`, {
+                params: { limit: 25 },
+                timeout: 5000,
+            });
+            return data.data || [];
+        }
+    } catch (err) {
+        console.error(`[Fallback] Failed to fetch popular ${mediaType}:`, err.message);
         return [];
     }
 };
@@ -74,11 +127,11 @@ const fetchTmdbCandidates = async (mediaType, seedId) => {
 const fetchJikanCandidates = async (seedId) => {
     try {
         const { data } = await axios.get(`${JIKAN_BASE}/anime/${seedId}/recommendations`, {
-            timeout: 5000,
+            timeout: 3000,
         });
         return (data.data || []).map((r) => r.entry);
     } catch (err) {
-        console.error(`[Jikan] Failed for anime/${seedId}:`, err.message);
+        console.warn(`[Jikan] Failed for anime/${seedId}:`, err.message);
         return [];
     }
 };
@@ -210,22 +263,37 @@ exports.getRecommendations = async (req, res) => {
 
         if (mediaType === 'movie') {
             const movies = user.movies || [];
+            // Strictly ONLY watched movies, ordered by user rating (liked first, defaulting unrated to 6.5 neutral)
             seeds = movies
-                .filter((m) => m.watchStatus === 'watched' || m.watchStatus === 'inProgress')
+                .filter((m) => m.watchStatus === 'watched')
+                .sort((a, b) => (Number(b.rating) || 6.5) - (Number(a.rating) || 6.5))
                 .map((m) => m.movieId);
-            allUserIds = movies.map((m) => m.movieId);
+            // All movies in user's library (watched, currently watching, planned) MUST be excluded from recommendations
+            allUserIds = movies
+                .filter((m) => ['watched', 'inProgress', 'planToWatch'].includes(m.watchStatus))
+                .map((m) => m.movieId);
         } else if (mediaType === 'tvshow') {
             const shows = user.tvShows || [];
+            // Strictly ONLY watched TV shows, ordered by user rating (liked first, defaulting unrated to 6.5 neutral)
             seeds = shows
-                .filter((s) => s.watchStatus === 'watched' || s.watchStatus === 'inProgress')
+                .filter((s) => s.watchStatus === 'watched')
+                .sort((a, b) => (Number(b.rating) || 6.5) - (Number(a.rating) || 6.5))
                 .map((s) => s.showId);
-            allUserIds = shows.map((s) => s.showId);
+            // All TV shows in user's library MUST be excluded
+            allUserIds = shows
+                .filter((s) => ['watched', 'inProgress', 'planToWatch'].includes(s.watchStatus))
+                .map((s) => s.showId);
         } else {
             const animes = user.anime || [];
+            // Strictly ONLY watched anime, ordered by user rating (liked first, defaulting unrated to 6.5 neutral)
             seeds = animes
-                .filter((a) => a.watchStatus === 'watched' || a.watchStatus === 'inProgress')
+                .filter((a) => a.watchStatus === 'watched')
+                .sort((a, b) => (Number(b.rating) || 6.5) - (Number(a.rating) || 6.5))
                 .map((a) => a.animeId);
-            allUserIds = animes.map((a) => a.animeId);
+            // All anime in user's library MUST be excluded
+            allUserIds = animes
+                .filter((a) => ['watched', 'inProgress', 'planToWatch'].includes(a.watchStatus))
+                .map((a) => a.animeId);
         }
 
         // ── Step 2: Load preference profile ──────────────────────────────
@@ -248,17 +316,26 @@ exports.getRecommendations = async (req, res) => {
         } else {
             // FALLBACK PATH — TMDB / Jikan seed-based retrieval
             candidateSource = 'fallback';
-            const seedsToUse = seeds.slice(0, 10);
+            const seedsToUse = mediaType === 'anime' ? seeds.slice(0, 3) : seeds.slice(0, 10);
 
             if (seedsToUse.length > 0) {
-                const candidateLists = await Promise.all(
+                const candidateLists = await Promise.allSettled(
                     seedsToUse.map((id) =>
                         mediaType === 'anime'
                             ? fetchJikanCandidates(id)
                             : fetchTmdbCandidates(mediaType, id)
                     )
                 );
-                allCandidates = candidateLists.flat();
+                allCandidates = candidateLists
+                    .filter((r) => r.status === 'fulfilled')
+                    .map((r) => r.value)
+                    .flat();
+            }
+
+            // If candidates are sparse (or Jikan timed out), supplement with popular post-2000 fallback
+            if (allCandidates.length < 15) {
+                const popular = await fetchPopularFallback(mediaType);
+                allCandidates = [...allCandidates, ...popular];
             }
         }
 
@@ -266,8 +343,14 @@ exports.getRecommendations = async (req, res) => {
         const idField = mediaType === 'anime' ? 'mal_id' : 'id';
         const uniqueCandidates = deduplicateById(allCandidates, idField);
 
-        // ── Step 5: Re-rank (shared layer — unchanged) ────────────────────
-        const personalised = rerankCandidates(uniqueCandidates, profile, mediaType, topN);
+        // ── Step 5: Filter out watched/inProgress/planToWatch media & Re-rank ──
+        const excludeSet = new Set(excludeIds.map(String));
+        const filteredCandidates = uniqueCandidates.filter((item) => {
+            const id = String(mediaType === 'anime' ? (item.mal_id || item.id) : item.id);
+            return !excludeSet.has(id);
+        });
+
+        const personalised = rerankCandidates(filteredCandidates, profile, mediaType, topN);
 
         // ── Step 6: Respond ───────────────────────────────────────────────
         res.json({

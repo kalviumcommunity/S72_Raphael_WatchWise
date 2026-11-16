@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import axios from "axios";
 import Navbar from "../components/navbar";
+import LoadingScreen from "../components/LoadingScreen";
 
 const ANIME_DETAILS_URL = "https://api.jikan.moe/v4/anime/";
   const Endpoint = "https://s72-raphael-watchwise.onrender.com";
@@ -42,11 +43,11 @@ const WATCH_STATUS_STYLES = {
 };
 
 const RATING_CONFIG = [
-  { value: 2, emoji: '😫', color: 'bg-red-500' },
-  { value: 4, emoji: '😕', color: 'bg-orange-500' },
-  { value: 6, emoji: '😐', color: 'bg-yellow-500' },
-  { value: 8, emoji: '😊', color: 'bg-lime-500' },
-  { value: 10, emoji: '😍', color: 'bg-green-500' }
+  { value: 2, label: '1', color: 'bg-red-500' },
+  { value: 4, label: '2', color: 'bg-orange-500' },
+  { value: 6, label: '3', color: 'bg-yellow-500' },
+  { value: 8, label: '4', color: 'bg-lime-500' },
+  { value: 10, label: '5', color: 'bg-green-500' }
 ];
 
 const AnimeDetails = () => {
@@ -56,21 +57,25 @@ const AnimeDetails = () => {
   const [loading, setLoading] = useState(true);
   const [watchStatus, setWatchStatus] = useState(WATCH_STATUS.NOT_PLANNING);
   const [rating, setRating] = useState(0);
+  const [hoverRating, setHoverRating] = useState(0);
   const [updateStatus, setUpdateStatus] = useState('');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [similarAnime, setSimilarAnime] = useState([]);
   const [trailerLoading, setTrailerLoading] = useState(true);
   const [loadingSimilar, setLoadingSimilar] = useState(false);
   const [displayedCount, setDisplayedCount] = useState(4);
+  const userExcludedAnimeIdsRef = useRef(new Set());
 
   useEffect(() => {
     setWatchStatus(WATCH_STATUS.NOT_PLANNING);
     setRating(0);
+    setHoverRating(0);
     setLoading(true);
     setUpdateStatus('');
     setTrailerLoading(true);
     setSimilarAnime([]);
     setDisplayedCount(4);
+    userExcludedAnimeIdsRef.current = new Set();
 
     const token = localStorage.getItem('token');
     setIsAuthenticated(!!token);
@@ -80,7 +85,25 @@ const AnimeDetails = () => {
         const animeResponse = await axios.get(`${ANIME_DETAILS_URL}${id}/full`);
         setAnime(animeResponse.data.data);
         
+        // Fetch user's anime library to exclude all watched/inProgress/planToWatch anime from Similar Anime
         if (token) {
+          try {
+            const libRes = await axios.get(`${Endpoint}/api/profile/anime`, {
+              headers: { Authorization: `Bearer ${token}` },
+              timeout: 4000
+            });
+            const userAnime = libRes.data?.anime || [];
+            const excluded = new Set();
+            for (const a of userAnime) {
+              if (a.watchStatus && ['watched', 'inProgress', 'planToWatch'].includes(a.watchStatus) && a.animeId) {
+                excluded.add(String(a.animeId));
+              }
+            }
+            userExcludedAnimeIdsRef.current = excluded;
+          } catch {
+            // non-critical
+          }
+
           const userStatusResponse = await fetchUserAnimeStatus();
           if (userStatusResponse) {
             setWatchStatus(userStatusResponse.watchStatus);
@@ -88,7 +111,7 @@ const AnimeDetails = () => {
           }
         }
         
-        // Fetch similar anime (recommendations)
+        // Fetch similar anime (excluding user's watched/planned/watching anime)
         fetchSimilarAnime(id);
         
         setTrailerLoading(false);
@@ -104,8 +127,13 @@ const AnimeDetails = () => {
 
   const fetchSimilarAnime = async (animeId) => {
     try {
-      const response = await axios.get(`${ANIME_DETAILS_URL}${animeId}/recommendations`);
-      setSimilarAnime(response.data.data);
+      const response = await axios.get(`${ANIME_DETAILS_URL}${animeId}/recommendations`, { timeout: 3500 });
+      const rawRecs = response.data?.data || [];
+      const filtered = rawRecs.filter(r => {
+        const malId = String(r?.entry?.mal_id);
+        return malId !== String(animeId) && !userExcludedAnimeIdsRef.current.has(malId);
+      });
+      setSimilarAnime(filtered);
     } catch (error) {
       console.error("Error fetching similar anime:", error);
     }
@@ -243,6 +271,13 @@ const AnimeDetails = () => {
       return;
     }
     setWatchStatus(newStatus);
+    const animeIdStr = String(id);
+    if (['watched', 'inProgress', 'planToWatch'].includes(newStatus)) {
+      userExcludedAnimeIdsRef.current.add(animeIdStr);
+      setSimilarAnime(prev => prev.filter(a => String(a?.entry?.mal_id) !== animeIdStr));
+    } else {
+      userExcludedAnimeIdsRef.current.delete(animeIdStr);
+    }
     updateAnimeStatus(newStatus, rating);
   };
 
@@ -252,12 +287,8 @@ const AnimeDetails = () => {
       return;
     }
     setRating(newRating);
+    setHoverRating(0);
     updateAnimeStatus(watchStatus, newRating);
-  };
-
-  const getRatingEmoji = (currentRating) => {
-    const config = RATING_CONFIG.find(r => r.value === currentRating);
-    return config ? config.emoji : '🤔';
   };
 
   const getRatingColor = (currentRating) => {
@@ -265,7 +296,7 @@ const AnimeDetails = () => {
     return config ? config.color : 'bg-gray-200';
   };
 
-  if (loading) return <p className="text-center mt-10 text-white">Loading...</p>;
+  if (loading) return <LoadingScreen message="Loading" />;
   if (!anime) return <p className="text-center mt-10 text-red-500">Anime not found!</p>;
 
   return (
@@ -293,13 +324,13 @@ const AnimeDetails = () => {
             />
             <div className="md:ml-6 mt-4 md:mt-0 flex-1 w-full md:w-auto">
               <h1 className="text-3xl font-bold text-white">{anime.title}</h1>
-              <p className="text-gray-300 mt-2">📅 {new Date(anime.aired.from).getFullYear()}</p>
+              <p className="text-gray-300 mt-2">Aired: {new Date(anime.aired.from).getFullYear()}</p>
               <p className="mt-4 text-gray-200">{anime.synopsis}</p>
-              <p className="mt-4 font-semibold text-white">⭐ Rating: {anime.score?.toFixed(1) || 'N/A'}/10</p>
-              <p className="mt-2 text-gray-300">🎭 Genres: {anime.genres.map(g => g.name).join(", ")}</p>
-              <p className="mt-2 text-gray-300">📺 Episodes: {anime.episodes || 'Unknown'}</p>
-              <p className="mt-2 text-gray-300">⏱️ Duration: {anime.duration}</p>
-              <p className="mt-2 text-gray-300">🎬 Status: {anime.status}</p>
+              <p className="mt-4 font-semibold text-white">Rating: {anime.score?.toFixed(1) || 'N/A'}/10</p>
+              <p className="mt-2 text-gray-300">Genres: {anime.genres.map(g => g.name).join(", ")}</p>
+              <p className="mt-2 text-gray-300">Episodes: {anime.episodes || 'Unknown'}</p>
+              <p className="mt-2 text-gray-300">Duration: {anime.duration}</p>
+              <p className="mt-2 text-gray-300">Status: {anime.status}</p>
 
               {!isAuthenticated ? (
                 <div className="mt-6 p-4 backdrop-blur-md bg-blue-500/20 text-blue-200 rounded-lg border border-blue-400/30 w-full">
@@ -338,44 +369,60 @@ const AnimeDetails = () => {
                     </div>
                   </div>
 
-                  {/* Rating Buttons - Only show for watched or in progress */}
+                  {/* Interactive Star Rating - Only show for watched or in progress */}
                   {(watchStatus === WATCH_STATUS.COMPLETED || watchStatus === WATCH_STATUS.IN_PROGRESS) && (
                     <div className="mt-6 w-full">
-                      <h3 className="text-lg font-semibold mb-2 text-white">Your Rating</h3>
-                      <div className="flex w-full max-w-md flex-wrap">
-                        {RATING_CONFIG.map((config, index) => (
+                      <div className="flex items-center justify-between mb-2 max-w-md">
+                        <h3 className="text-lg font-semibold text-white">Your Rating</h3>
+                        {rating > 0 && (
                           <button
-                            key={config.value}
-                            onClick={() => handleRatingChange(config.value)}
-                            className={`
-                              flex-1 h-12 flex items-center justify-center
-                              transition-all duration-300 relative
-                              ${index === 0 ? 'rounded-l-lg' : ''}
-                              ${index === RATING_CONFIG.length - 1 ? 'rounded-r-lg' : ''}
-                              ${rating === config.value 
-                                ? `${config.color} text-white transform scale-y-105 z-10 shadow-md` 
-                                : 'backdrop-blur-md bg-white/10 text-white hover:bg-white/20 border border-white/20'
-                              }
-                              ${index > 0 ? '-ml-px' : ''}
-                            `}
+                            type="button"
+                            onClick={() => handleRatingChange(0)}
+                            className="text-xs text-gray-400 hover:text-red-400 transition-colors duration-150 underline decoration-dotted"
                           >
-                            <span className="text-2xl">{config.emoji}</span>
+                            Clear rating
                           </button>
-                        ))}
+                        )}
                       </div>
-                      <p className="mt-2 text-sm text-gray-300 flex items-center gap-2">
-                        {rating > 0 ? (
-                          <>
-                            <span>Your rating: {getRatingEmoji(rating)}</span>
-                            <span className={`
-                              px-2 py-1 rounded text-white text-xs
-                              ${getRatingColor(rating)}
-                            `}>
-                              {rating/2}/5
-                            </span>
-                          </>
-                        ) : "Not rated yet"}
-                      </p>
+                      <div className="flex items-center gap-1.5 p-3 rounded-xl bg-white/5 border border-white/10 max-w-md">
+                        {[1, 2, 3, 4, 5].map((star) => {
+                          const starValue = star * 2;
+                          const isFilled = (hoverRating || rating) >= starValue;
+                          return (
+                            <button
+                              key={star}
+                              type="button"
+                              onClick={() => handleRatingChange(rating === starValue ? 0 : starValue)}
+                              onMouseEnter={() => setHoverRating(starValue)}
+                              onMouseLeave={() => setHoverRating(0)}
+                              className="p-1 rounded-lg hover:bg-white/10 transition-transform duration-150 transform hover:scale-110 focus:outline-none"
+                              title={`${star}/5 Stars`}
+                            >
+                              <svg
+                                className={`w-7 h-7 transition-colors duration-150 ${
+                                  isFilled ? 'text-amber-400 fill-amber-400' : 'text-gray-600 fill-transparent'
+                                }`}
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                                strokeWidth="1.5"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z"
+                                />
+                              </svg>
+                            </button>
+                          );
+                        })}
+                        <div className="ml-auto flex items-center gap-2">
+                          <span className={`px-2.5 py-1 rounded-md text-xs font-semibold ${
+                            (hoverRating || rating) > 0 ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : 'bg-gray-800 text-gray-400'
+                          }`}>
+                            {(hoverRating || rating) > 0 ? `${(hoverRating || rating) / 2} / 5` : 'Not Rated'}
+                          </span>
+                        </div>
+                      </div>
                     </div>
                   )}
 
@@ -424,8 +471,10 @@ const AnimeDetails = () => {
       {similarAnime.length > 0 && (
         <div className="w-full py-12">
           <div className="max-w-7xl mx-auto px-6">
-            <div className="mb-8 backdrop-blur-md bg-white/10 p-4 rounded-lg shadow-md w-[300px] mx-auto border border-white/20">
-              <h2 className="text-3xl font-bold text-center text-white">Similar Anime</h2>
+            <div className="mb-8 backdrop-blur-md bg-white/10 px-8 py-4 rounded-2xl shadow-xl w-fit max-w-xl mx-auto border border-white/20 text-center">
+              <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-wide">
+                You'll Also Like
+              </h2>
             </div>
             <div className="grid grid-cols-4 gap-6">
               {similarAnime.slice(0, displayedCount).map((recommendation) => (

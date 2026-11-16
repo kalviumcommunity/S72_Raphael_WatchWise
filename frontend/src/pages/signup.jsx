@@ -68,7 +68,7 @@ function Signup({ setIsAuthenticated }) {
             
             localStorage.setItem('token', response.data.token);
             setIsAuthenticated(true);
-            navigate('/home');
+            navigate('/');
         } catch (error) {
             setError(error.response?.data?.error || 'An error occurred during registration');
         } finally {

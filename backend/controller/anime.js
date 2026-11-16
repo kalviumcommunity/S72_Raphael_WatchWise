@@ -97,7 +97,7 @@ router.put('/:animeId', auth, async (req, res) => {
             updatedAnime = {
                 ...user.anime[animeIndex].toObject(),
                 watchStatus,
-                rating: rating || user.anime[animeIndex].rating,
+                rating: rating !== undefined ? Number(rating) : user.anime[animeIndex].rating,
                 updatedAt: Date.now()
             };
             user.anime[animeIndex] = updatedAnime;

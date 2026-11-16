@@ -93,7 +93,7 @@ router.put('/:showId', auth, async (req, res) => {
             updatedShow = {
                 ...user.tvShows[showIndex].toObject(),
                 watchStatus,
-                rating: rating || user.tvShows[showIndex].rating,
+                rating: rating !== undefined ? Number(rating) : user.tvShows[showIndex].rating,
                 updatedAt: Date.now()
             };
             user.tvShows[showIndex] = updatedShow;

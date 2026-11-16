@@ -19,6 +19,14 @@ const AnimeCard = ({ anime }) => {
                     alt={anime.title}
                     className="absolute top-0 left-0 w-full h-full object-cover"
                 />
+                {/* User Personal Rating Badge */}
+                {anime?.rating > 0 && (
+                    <div className="absolute top-2 left-2 bg-black/85 px-1.5 py-0.5 rounded flex items-center gap-1 border border-amber-500/60 shadow-md z-10">
+                        <span className="text-[10px] text-amber-400 font-bold">
+                            ★ {anime.rating / 2}/5
+                        </span>
+                    </div>
+                )}
             </div>
 
             {/* Content Container */}
@@ -30,13 +38,13 @@ const AnimeCard = ({ anime }) => {
 
                 {/* Rating */}
                 <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1">
-                        <span className="text-yellow-500">⭐</span>
-                        <span className="text-sm text-white">
+                    <div className="flex items-center gap-1.5">
+                        <span className="bg-[#2e51a2] text-white font-bold text-[9px] px-1 py-0.2 rounded font-mono">MAL</span>
+                        <span className="text-sm text-white font-semibold">
                             {anime.score?.toFixed(1) || 'N/A'}
                         </span>
                     </div>
-                    <span className="text-xs text-white">
+                    <span className="text-xs text-gray-300">
                         {anime.aired?.from ? new Date(anime.aired.from).getFullYear() : 'TBA'}
                     </span>
                 </div>

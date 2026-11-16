@@ -122,7 +122,7 @@ router.put('/:movieId', auth, async (req, res) => {
             updatedMovie = {
                 ...user.movies[movieIndex].toObject(),
                 watchStatus,
-                rating: rating || user.movies[movieIndex].rating,
+                rating: rating !== undefined ? Number(rating) : user.movies[movieIndex].rating,
                 updatedAt: Date.now()
             };
             user.movies[movieIndex] = updatedMovie;

@@ -4,7 +4,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
 import { useSearch } from '../context/SearchContext';
 
-const API_KEY = "0ace2af581de1152e9f38a6c477220b8";
+const API_KEY = import.meta.env.VITE_TMDB_API_KEY || "0ace2af581de1152e9f38a6c477220b8";
 const SEARCH_MOVIES_URL = `https://api.themoviedb.org/3/search/movie?api_key=${API_KEY}&query=`;
 const SEARCH_TV_URL = `https://api.themoviedb.org/3/search/tv?api_key=${API_KEY}&query=`;
 const SEARCH_ANIME_URL = "https://api.jikan.moe/v4/anime";
@@ -27,8 +27,10 @@ const Navbar = () => {
   const [showGenres, setShowGenres] = useState(false);
   const [genres, setGenres] = useState([]);
   const [scrolled, setScrolled] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const searchRef = useRef(null);
   const genreRef = useRef(null);
+  const searchTimeoutRef = useRef(null);
 
   useEffect(() => {
     // Check if user is authenticated by looking for token
@@ -50,6 +52,7 @@ const Navbar = () => {
     setQuery("");
     setDropdownResults({ movies: [], tvShows: [], anime: [] });
     setShowResults(false);
+    setMobileMenuOpen(false);
   }, [location.pathname]);
 
   useEffect(() => {
@@ -83,82 +86,120 @@ const Navbar = () => {
     };
   }, []);
 
-  const handleSearch = async (e) => {
+  const handleSearch = (e) => {
     const searchTerm = e.target.value;
     setQuery(searchTerm);
     
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
     if (searchTerm.trim() === "") {
       setDropdownResults({ movies: [], tvShows: [], anime: [] });
       setShowResults(false);
+      setIsSearching(false);
+      return;
+    }
+
+    setIsSearching(true);
+
+    searchTimeoutRef.current = setTimeout(async () => {
+      try {
+        const encoded = encodeURIComponent(searchTerm.trim());
+        const [movieResult, tvResult, animeResult] = await Promise.allSettled([
+          axios.get(SEARCH_MOVIES_URL + encoded, { timeout: 8000 }),
+          axios.get(SEARCH_TV_URL + encoded, { timeout: 8000 }),
+          axios.get(SEARCH_ANIME_URL, {
+            params: {
+              q: searchTerm.trim(),
+              limit: 5,
+              sfw: true
+            },
+            timeout: 3500
+          })
+        ]);
+
+        const movies = movieResult.status === 'fulfilled' && movieResult.value?.data?.results
+          ? movieResult.value.data.results.slice(0, 5)
+          : [];
+        const tvShows = tvResult.status === 'fulfilled' && tvResult.value?.data?.results
+          ? tvResult.value.data.results.slice(0, 5)
+          : [];
+        const anime = animeResult.status === 'fulfilled' && animeResult.value?.data?.data
+          ? animeResult.value.data.data.slice(0, 5)
+          : [];
+
+        setDropdownResults({ movies, tvShows, anime });
+        setShowResults((movies.length > 0 || tvShows.length > 0 || anime.length > 0) && isFocused);
+      } catch (error) {
+        console.error("Error searching dropdown:", error);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 250);
+  };
+
+  const performFullSearch = async (forcedQuery) => {
+    const q = (typeof forcedQuery === 'string' ? forcedQuery : query).trim();
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+    setShowResults(false);
+
+    if (q === "") {
+      clearSearch();
       return;
     }
 
     setIsSearching(true);
     try {
-      const [movieResponse, tvResponse, animeResponse] = await Promise.all([
-        axios.get(SEARCH_MOVIES_URL + searchTerm),
-        axios.get(SEARCH_TV_URL + searchTerm),
+      const encoded = encodeURIComponent(q);
+      const [movieResult, tvResult, animeResult] = await Promise.allSettled([
+        axios.get(SEARCH_MOVIES_URL + encoded, { timeout: 10000 }),
+        axios.get(SEARCH_TV_URL + encoded, { timeout: 10000 }),
         axios.get(SEARCH_ANIME_URL, {
           params: {
-            q: searchTerm,
-            limit: 5,
+            q: q,
             sfw: true
-          }
+          },
+          timeout: 4000
         })
       ]);
 
-      setDropdownResults({
-        movies: movieResponse.data.results.slice(0, 5),
-        tvShows: tvResponse.data.results.slice(0, 5),
-        anime: animeResponse.data.data.slice(0, 5)
+      const movies = movieResult.status === 'fulfilled' && movieResult.value?.data?.results
+        ? movieResult.value.data.results
+        : [];
+      const tvShows = tvResult.status === 'fulfilled' && tvResult.value?.data?.results
+        ? tvResult.value.data.results
+        : [];
+      const anime = animeResult.status === 'fulfilled' && animeResult.value?.data?.data
+        ? animeResult.value.data.data
+        : [];
+
+      updateSearchState({
+        results: {
+          movies,
+          tvShows,
+          anime
+        },
+        query: q,
+        page: 1
       });
-      
-      setShowResults(true && isFocused);
+
+      if (location.pathname !== '/') {
+        navigate('/');
+      }
     } catch (error) {
-      console.error("Error searching:", error);
+      console.error("Error executing search:", error);
     } finally {
       setIsSearching(false);
     }
   };
 
-  const handleKeyPress = async (e) => {
+  const handleKeyDown = (e) => {
     if (e.key === 'Enter') {
       e.preventDefault();
-      setShowResults(false);
-      
-      if (query.trim() === "") {
-        clearSearch();
-        return;
-      }
-      
-      try {
-        const [movieResponse, tvResponse, animeResponse] = await Promise.all([
-          axios.get(SEARCH_MOVIES_URL + query),
-          axios.get(SEARCH_TV_URL + query),
-          axios.get(SEARCH_ANIME_URL, {
-            params: {
-              q: query,
-              sfw: true
-            }
-          })
-        ]);
-
-        updateSearchState({
-          results: {
-            movies: movieResponse.data.results,
-            tvShows: tvResponse.data.results,
-            anime: animeResponse.data.data
-          },
-          query: query,
-          page: 1
-        });
-
-        if (location.pathname !== '/') {
-          navigate('/');
-        }
-      } catch (error) {
-        console.error("Error searching:", error);
-      }
+      performFullSearch();
     }
   };
 
@@ -233,20 +274,52 @@ const Navbar = () => {
             <ul className="hidden lg:flex space-x-1 items-center">
               <li>
                 <button 
-                  onClick={() => navigate("/home")} 
-                  className="text-white hover:text-gray-300 font-medium px-3 py-2 transition-colors duration-200 relative group"
+                  onClick={() => navigate("/")} 
+                  className={`font-medium px-3 py-2 transition-colors duration-200 relative group ${
+                    location.pathname === '/' ? 'text-white font-semibold' : 'text-gray-300 hover:text-white'
+                  }`}
                 >
                   Home
-                  <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-blue-600 group-hover:w-full transition-all duration-300"></span>
+                  <span className={`absolute bottom-0 left-0 h-0.5 bg-blue-600 transition-all duration-300 ${
+                    location.pathname === '/' ? 'w-full' : 'w-0 group-hover:w-full'
+                  }`}></span>
+                </button>
+              </li>
+              <li>
+                <button 
+                  onClick={() => {
+                    const token = localStorage.getItem('token');
+                    if (!token) {
+                      navigate("/login");
+                    } else {
+                      navigate("/watchlists");
+                    }
+                  }} 
+                  className={`font-medium px-3 py-2 transition-colors duration-200 relative group ${
+                    location.pathname === '/watchlists' || location.pathname === '/home' || location.pathname === '/my-watchlists' 
+                      ? 'text-white font-semibold' 
+                      : 'text-gray-300 hover:text-white'
+                  }`}
+                >
+                  My Watchlists
+                  <span className={`absolute bottom-0 left-0 h-0.5 bg-blue-600 transition-all duration-300 ${
+                    location.pathname === '/watchlists' || location.pathname === '/home' || location.pathname === '/my-watchlists' 
+                      ? 'w-full' 
+                      : 'w-0 group-hover:w-full'
+                  }`}></span>
                 </button>
               </li>
               <li>
                 <button 
                   onClick={() => navigate("/recommendations")} 
-                  className="text-white hover:text-gray-300 font-medium px-3 py-2 transition-colors duration-200 relative group"
+                  className={`font-medium px-3 py-2 transition-colors duration-200 relative group ${
+                    location.pathname === '/recommendations' ? 'text-white font-semibold' : 'text-gray-300 hover:text-white'
+                  }`}
                 >
                   Recommendations
-                  <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-blue-600 group-hover:w-full transition-all duration-300"></span>
+                  <span className={`absolute bottom-0 left-0 h-0.5 bg-blue-600 transition-all duration-300 ${
+                    location.pathname === '/recommendations' ? 'w-full' : 'w-0 group-hover:w-full'
+                  }`}></span>
                 </button>
               </li>
               <li ref={genreRef} className="relative">
@@ -319,23 +392,30 @@ const Navbar = () => {
                   type="text"
                   value={query}
                   onChange={handleSearch}
-                  onKeyPress={handleKeyPress}
+                  onKeyDown={handleKeyDown}
                   onFocus={handleFocus}
-                  placeholder="Search..."
+                  placeholder="Search movies, tv, anime..."
                   className={`px-4 py-2 pl-10 rounded-full bg-black/30 border border-gray-600 
                          text-white placeholder-gray-400
                          focus:bg-black/60 focus:border-blue-500 focus:outline-none
-                         transition-all duration-300 w-48 group-hover:w-56 group-focus-within:w-56 group-focus-within:bg-black/60`}
+                         transition-all duration-300 w-52 group-hover:w-64 group-focus-within:w-64 group-focus-within:bg-black/60`}
                 />
-                <svg
-                  className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
+                <button
+                  type="button"
+                  onClick={() => performFullSearch()}
+                  title="Search"
+                  className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition-colors focus:outline-none"
                 >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
+                  <svg
+                    className="w-4 h-4"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </button>
 
                 {/* Loading Indicator */}
                 {isSearching && (
@@ -347,12 +427,26 @@ const Navbar = () => {
 
               {/* Search Results Dropdown */}
               {showResults && (dropdownResults.movies.length > 0 || dropdownResults.tvShows.length > 0 || dropdownResults.anime.length > 0) && (
-                <div className="absolute top-full left-0 mt-3 w-[600px] bg-black/98 backdrop-blur-xl rounded-xl shadow-2xl border border-gray-700 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                <div 
+                  className="absolute top-full right-0 mt-3 w-[92vw] sm:w-[580px] rounded-2xl shadow-[0_25px_60px_rgba(0,0,0,0.95)] border border-gray-700/80 overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-200"
+                  style={{
+                    backgroundColor: 'rgba(12, 17, 28, 0.88)',
+                    backdropFilter: 'blur(32px) saturate(190%)',
+                    WebkitBackdropFilter: 'blur(32px) saturate(190%)'
+                  }}
+                >
                   <div className="max-h-[500px] overflow-y-auto">
                     {/* Movies Section */}
                     {dropdownResults.movies.length > 0 && (
                       <div>
-                        <div className="px-5 py-3 bg-gray-900/70 border-b border-gray-700 sticky top-0 backdrop-blur-sm z-10">
+                        <div 
+                          className="px-5 py-3 border-b border-gray-700/60 sticky top-0 z-10"
+                          style={{
+                            backgroundColor: 'rgba(17, 24, 39, 0.92)',
+                            backdropFilter: 'blur(20px)',
+                            WebkitBackdropFilter: 'blur(20px)'
+                          }}
+                        >
                           <h3 className="text-sm font-bold text-blue-400 flex items-center gap-2">
                             <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                               <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z" />
@@ -365,7 +459,7 @@ const Navbar = () => {
                             <button
                               key={movie.id}
                               onClick={() => handleItemClick('movie', movie.id)}
-                              className="group px-4 py-3 text-left hover:bg-blue-600/20 flex items-center gap-4 transition-all duration-200 border-b border-gray-800/50 last:border-b-0"
+                              className="group px-4 py-3 text-left hover:bg-blue-600/30 flex items-center gap-4 transition-all duration-200 border-b border-gray-800/40 last:border-b-0"
                               style={{ animationDelay: `${index * 50}ms` }}
                             >
                               <div className="relative flex-shrink-0">
@@ -415,7 +509,14 @@ const Navbar = () => {
                     {/* TV Shows Section */}
                     {dropdownResults.tvShows.length > 0 && (
                       <div>
-                        <div className="px-5 py-3 bg-gray-900/70 border-b border-gray-700 sticky top-0 backdrop-blur-sm z-10">
+                        <div 
+                          className="px-5 py-3 border-b border-gray-700/60 sticky top-0 z-10"
+                          style={{
+                            backgroundColor: 'rgba(17, 24, 39, 0.92)',
+                            backdropFilter: 'blur(20px)',
+                            WebkitBackdropFilter: 'blur(20px)'
+                          }}
+                        >
                           <h3 className="text-sm font-bold text-blue-400 flex items-center gap-2">
                             <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                               <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
@@ -428,7 +529,7 @@ const Navbar = () => {
                             <button
                               key={show.id}
                               onClick={() => handleItemClick('tv', show.id)}
-                              className="group px-4 py-3 text-left hover:bg-blue-600/20 flex items-center gap-4 transition-all duration-200 border-b border-gray-800/50 last:border-b-0"
+                              className="group px-4 py-3 text-left hover:bg-blue-600/30 flex items-center gap-4 transition-all duration-200 border-b border-gray-800/40 last:border-b-0"
                               style={{ animationDelay: `${index * 50}ms` }}
                             >
                               <div className="relative flex-shrink-0">
@@ -478,7 +579,14 @@ const Navbar = () => {
                     {/* Anime Section */}
                     {dropdownResults.anime.length > 0 && (
                       <div>
-                        <div className="px-5 py-3 bg-gray-900/70 border-b border-gray-700 sticky top-0 backdrop-blur-sm z-10">
+                        <div 
+                          className="px-5 py-3 border-b border-gray-700/60 sticky top-0 z-10"
+                          style={{
+                            backgroundColor: 'rgba(17, 24, 39, 0.92)',
+                            backdropFilter: 'blur(20px)',
+                            WebkitBackdropFilter: 'blur(20px)'
+                          }}
+                        >
                           <h3 className="text-sm font-bold text-blue-400 flex items-center gap-2">
                             <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                               <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM4.332 8.027a6.012 6.012 0 011.912-2.706C6.512 5.73 6.974 6 7.5 6A1.5 1.5 0 019 7.5V8a2 2 0 004 0 2 2 0 011.523-1.943A5.977 5.977 0 0116 10c0 .34-.028.675-.083 1H15a2 2 0 00-2 2v2.197A5.973 5.973 0 0110 16v-2a2 2 0 00-2-2 2 2 0 01-2-2 2 2 0 00-1.668-1.973z" clipRule="evenodd" />
@@ -491,7 +599,7 @@ const Navbar = () => {
                             <button
                               key={anime.mal_id}
                               onClick={() => handleItemClick('anime', anime.mal_id)}
-                              className="group px-4 py-3 text-left hover:bg-blue-600/20 flex items-center gap-4 transition-all duration-200 border-b border-gray-800/50 last:border-b-0"
+                              className="group px-4 py-3 text-left hover:bg-blue-600/30 flex items-center gap-4 transition-all duration-200 border-b border-gray-800/40 last:border-b-0"
                               style={{ animationDelay: `${index * 50}ms` }}
                             >
                               <div className="relative flex-shrink-0">
@@ -571,13 +679,58 @@ const Navbar = () => {
             </button>
 
             {/* Mobile Menu Button */}
-            <button className="lg:hidden text-white hover:text-blue-600 transition-colors focus:outline-none">
+            <button 
+              onClick={() => setMobileMenuOpen(prev => !prev)}
+              aria-label="Toggle navigation menu"
+              className="lg:hidden text-white hover:text-blue-500 transition-colors focus:outline-none p-1.5"
+            >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                {mobileMenuOpen ? (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+                ) : (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                )}
               </svg>
             </button>
           </div>
         </div>
+
+        {/* Mobile Navigation Dropdown */}
+        {mobileMenuOpen && (
+          <div className="lg:hidden mt-4 pt-4 border-t border-gray-800 flex flex-col gap-2 pb-2 animate-in fade-in duration-200">
+            <button 
+              onClick={() => { setMobileMenuOpen(false); navigate("/"); }}
+              className={`text-left px-3 py-2 rounded-lg font-medium transition-colors ${
+                location.pathname === '/' ? 'bg-blue-600/30 text-white' : 'text-gray-300 hover:text-white hover:bg-gray-800/50'
+              }`}
+            >
+              Home
+            </button>
+            <button 
+              onClick={() => {
+                setMobileMenuOpen(false);
+                const token = localStorage.getItem('token');
+                if (!token) navigate("/login");
+                else navigate("/watchlists");
+              }}
+              className={`text-left px-3 py-2 rounded-lg font-medium transition-colors ${
+                location.pathname === '/watchlists' || location.pathname === '/home' || location.pathname === '/my-watchlists' 
+                  ? 'bg-blue-600/30 text-white' 
+                  : 'text-gray-300 hover:text-white hover:bg-gray-800/50'
+              }`}
+            >
+              My Watchlists
+            </button>
+            <button 
+              onClick={() => { setMobileMenuOpen(false); navigate("/recommendations"); }}
+              className={`text-left px-3 py-2 rounded-lg font-medium transition-colors ${
+                location.pathname === '/recommendations' ? 'bg-blue-600/30 text-white' : 'text-gray-300 hover:text-white hover:bg-gray-800/50'
+              }`}
+            >
+              Recommendations
+            </button>
+          </div>
+        )}
       </div>
     </nav>
   );

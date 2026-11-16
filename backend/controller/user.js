@@ -127,7 +127,7 @@ authRouter.post("/register", (req, res) => {
 authRouter.post("/login", async (req, res) => {
     try {
         console.log("Received login request body:", req.body);
-        const { email, password } = req.body;
+        const { email, password, rememberMe } = req.body;
         
         if (!email || !password) {
             console.log("Missing email or password");
@@ -158,11 +158,11 @@ authRouter.post("/login", async (req, res) => {
                 return res.status(400).json({ error: "Incorrect password" });
             }
 
-            // Generate JWT token with user ID
+            // Generate JWT token with user ID (30 days if rememberMe, otherwise 1 hour)
             const token = jwt.sign(
                 { id: user._id.toString() }, 
                 process.env.JWT_SECRET || 'your-secret-key',
-                { expiresIn: "1h" }
+                { expiresIn: rememberMe ? "30d" : "1h" }
             );
 
             // Log the token details for debugging

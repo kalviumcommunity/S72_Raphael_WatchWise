@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
 import Navbar from "../components/navbar";
-import MovieCard from "../components/Moviecard";
+import TvShowCard from "../components/Tvshowcard";
+import LoadingScreen from "../components/LoadingScreen";
+import { detectThemeFromKeywords, calculateQualityScore, isHollywoodMedia, partitionAndSortByYear, getMediaYear } from "../utils/themeEngine";
 
 const API_KEY = "0ace2af581de1152e9f38a6c477220b8";
 const TV_DETAILS_URL = "https://api.themoviedb.org/3/tv/";
@@ -44,11 +46,11 @@ const WATCH_STATUS_STYLES = {
 };
 
 const RATING_CONFIG = [
-  { value: 2, emoji: '😫', color: 'bg-red-500' },
-  { value: 4, emoji: '😕', color: 'bg-orange-500' },
-  { value: 6, emoji: '😐', color: 'bg-yellow-500' },
-  { value: 8, emoji: '😊', color: 'bg-lime-500' },
-  { value: 10, emoji: '😍', color: 'bg-green-500' }
+  { value: 2, label: '1', color: 'bg-red-500' },
+  { value: 4, label: '2', color: 'bg-orange-500' },
+  { value: 6, label: '3', color: 'bg-yellow-500' },
+  { value: 8, label: '4', color: 'bg-lime-500' },
+  { value: 10, label: '5', color: 'bg-green-500' }
 ];
 
 const TvShowDetails = () => {
@@ -58,6 +60,7 @@ const TvShowDetails = () => {
   const [loading, setLoading] = useState(true);
   const [watchStatus, setWatchStatus] = useState(WATCH_STATUS.NOT_PLANNING);
   const [rating, setRating] = useState(0);
+  const [hoverRating, setHoverRating] = useState(0);
   const [updateStatus, setUpdateStatus] = useState('');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [trailers, setTrailers] = useState([]);
@@ -66,11 +69,22 @@ const TvShowDetails = () => {
   const [loadingSimilar, setLoadingSimilar] = useState(false);
   const [similarPage, setSimilarPage] = useState(1);
   const [hasMoreSimilar, setHasMoreSimilar] = useState(true);
+  const [themeInfo, setThemeInfo] = useState(null);
+  const seenShowIdsRef = useRef(new Set());
+  const userExcludedShowIdsRef = useRef(new Set());
+  const showDetailsRef = useRef(null);
+  const themeInfoRef = useRef(null);
+  const pre2000ReservoirRef = useRef([]);
+  const post2000ExhaustedRef = useRef(false);
 
   useEffect(() => {
+    // Scroll to top when show changes
+    window.scrollTo(0, 0);
+
     // Reset states immediately when show ID changes
     setWatchStatus(WATCH_STATUS.NOT_PLANNING);
     setRating(0);
+    setHoverRating(0);
     setLoading(true);
     setUpdateStatus('');
     setTrailers([]);
@@ -79,6 +93,12 @@ const TvShowDetails = () => {
     setSimilarPage(1);
     setHasMoreSimilar(true);
     setLoadingSimilar(false);
+    setThemeInfo(null);
+    themeInfoRef.current = null;
+    userExcludedShowIdsRef.current = new Set();
+    seenShowIdsRef.current = new Set([Number(id)]);
+    pre2000ReservoirRef.current = [];
+    post2000ExhaustedRef.current = false;
 
     const token = localStorage.getItem('token');
     setIsAuthenticated(!!token);
@@ -86,7 +106,9 @@ const TvShowDetails = () => {
     const fetchTvShowDetails = async () => {
       try {
         const showResponse = await axios.get(`${TV_DETAILS_URL}${id}?api_key=${API_KEY}`);
-        setShow(showResponse.data);
+        const showData = showResponse.data;
+        setShow(showData);
+        showDetailsRef.current = showData;
         
         // Fetch TV show videos (trailers)
         const videosResponse = await axios.get(
@@ -102,17 +124,50 @@ const TvShowDetails = () => {
         if (showTrailers.length > 0) {
           setSelectedTrailer(showTrailers[0]);
         }
+
+        // Fetch TV keywords for thematic analysis (e.g. Zombie vs Supernatural vs Space)
+        let detectedTheme = null;
+        try {
+          const kwResponse = await axios.get(
+            `${TV_DETAILS_URL}${id}/keywords?api_key=${API_KEY}`,
+            { timeout: 6000 }
+          );
+          // Note: TMDB TV keywords endpoint returns { id, results: [...] }
+          detectedTheme = detectThemeFromKeywords(kwResponse.data?.results || [], true);
+          setThemeInfo(detectedTheme);
+          themeInfoRef.current = detectedTheme;
+        } catch (kwErr) {
+          console.warn("Could not fetch TV show keywords:", kwErr?.message);
+        }
         
-        // Fetch initial similar TV shows
-        await fetchSimilarShows(1, true);
-        
+        // Fetch user's TV library to exclude watched/inProgress/planToWatch shows from Similar Shows
         if (token) {
+          try {
+            const libRes = await axios.get(`${Endpoint}/api/profile/tvshows`, {
+              headers: { Authorization: `Bearer ${token}` },
+              timeout: 4000
+            });
+            const userShows = libRes.data?.tvShows || [];
+            const excluded = new Set();
+            for (const s of userShows) {
+              if (s.watchStatus && ['watched', 'inProgress', 'planToWatch'].includes(s.watchStatus) && s.showId) {
+                excluded.add(Number(s.showId));
+              }
+            }
+            userExcludedShowIdsRef.current = excluded;
+          } catch {
+            // non-critical
+          }
+
           const userStatusResponse = await fetchUserTvShowStatus();
           if (userStatusResponse) {
             setWatchStatus(userStatusResponse.watchStatus);
             setRating(userStatusResponse.rating || 0);
           }
         }
+
+        // Fetch initial strictly similar and thematic TV shows (excluding user's watched/planned/watching shows)
+        await fetchSimilarShows(1, true, showData, detectedTheme);
       } catch (error) {
         console.error("Error fetching TV show details:", error);
       } finally {
@@ -123,24 +178,169 @@ const TvShowDetails = () => {
     fetchTvShowDetails();
   }, [id]);
 
-  const fetchSimilarShows = async (page = 1, reset = false) => {
-    if (loadingSimilar) return;
+  const calculateShowQualityScore = (item) => {
+    const active = showDetailsRef.current || show;
+    const isHollywood = isHollywoodMedia(active);
+    const currentLang = active?.original_language;
+    return calculateQualityScore(item, themeInfo?.matchedThemeId, currentLang, isHollywood);
+  };
+
+  const fetchSimilarShows = async (page = 1, reset = false, currentShowData = null, currentThemeInfo = null) => {
+    if (loadingSimilar && !reset) return;
     
     setLoadingSimilar(true);
     try {
-      const response = await axios.get(
-        `${TV_DETAILS_URL}${id}/similar?api_key=${API_KEY}&page=${page}`
-      );
-      
-      const newShows = response.data.results;
-      
+      const showIdNum = Number(id);
+      const activeShow = currentShowData || showDetailsRef.current || show;
+      const activeTheme = currentThemeInfo || themeInfoRef.current || themeInfo;
+      const isHollywood = isHollywoodMedia(activeShow);
+
       if (reset) {
-        setSimilarShows(newShows);
-      } else {
-        setSimilarShows(prev => [...prev, ...newShows]);
+        seenShowIdsRef.current = new Set([showIdNum, ...userExcludedShowIdsRef.current]);
       }
-      
-      setHasMoreSimilar(page < response.data.total_pages && newShows.length > 0);
+
+      let combinedShows = [];
+      let totalRecPages = 1;
+
+      // 1. Thematic Discovery:
+      // If specific narrative themes were identified (e.g. Zombie, Space Exploration, Supernatural),
+      // query TMDB Discover for TV with those theme keywords.
+      // Mandatory requirement: query post-2000 releases first.
+      if (activeTheme?.themeKeywordIds?.length > 0) {
+        try {
+          const kwQuery = activeTheme.themeKeywordIds.slice(0, 3).join('|');
+          const genreParam = activeShow?.genres?.[0]?.id ? `&with_genres=${activeShow.genres[0].id}` : '';
+          const langParam = isHollywood
+            ? '&with_original_language=en'
+            : (activeShow?.original_language ? `&with_original_language=${activeShow.original_language}` : '');
+          const dateParam = !post2000ExhaustedRef.current
+            ? '&first_air_date.gte=2000-01-01'
+            : '&first_air_date.lte=1999-12-31';
+
+          const discoverRes = await axios.get(
+            `https://api.themoviedb.org/3/discover/tv?api_key=${API_KEY}&with_keywords=${kwQuery}${genreParam}${langParam}${dateParam}&sort_by=popularity.desc&page=${page}`,
+            { timeout: 6000 }
+          );
+          const discoverList = discoverRes.data?.results || [];
+          const sortedDiscover = discoverList
+            .filter(s => s.id !== showIdNum && !userExcludedShowIdsRef.current.has(s.id))
+            .sort((a, b) => calculateShowQualityScore(b) - calculateShowQualityScore(a));
+
+          for (const item of sortedDiscover) {
+            if (!seenShowIdsRef.current.has(item.id)) {
+              seenShowIdsRef.current.add(item.id);
+              combinedShows.push(item);
+            }
+          }
+        } catch (discErr) {
+          console.warn("Could not fetch thematic TV discover matches:", discErr?.message);
+        }
+      }
+
+      // 2. Fetch TV Recommendations (collaborative filtering & direct spin-offs/prequels/genre matches)
+      try {
+        const response = await axios.get(
+          `${TV_DETAILS_URL}${id}/recommendations?api_key=${API_KEY}&page=${page}`,
+          { timeout: 6000 }
+        );
+        const recList = response.data?.results || [];
+        totalRecPages = response.data?.total_pages || 1;
+
+        // Sort by newer, more popular, and higher rated first
+        const sortedRecs = recList
+          .filter(r => r.id !== showIdNum && !userExcludedShowIdsRef.current.has(r.id))
+          .sort((a, b) => calculateShowQualityScore(b) - calculateShowQualityScore(a));
+
+        for (const item of sortedRecs) {
+          if (!seenShowIdsRef.current.has(item.id)) {
+            seenShowIdsRef.current.add(item.id);
+            combinedShows.push(item);
+          }
+        }
+      } catch (recErr) {
+        console.warn("Could not fetch TV recommendations:", recErr?.message);
+      }
+
+      // 3. Fallback to similar if recommendations is empty or ran out
+      if (combinedShows.length === 0 || page > totalRecPages) {
+        try {
+          const fallbackRes = await axios.get(
+            `${TV_DETAILS_URL}${id}/similar?api_key=${API_KEY}&page=${page}`,
+            { timeout: 6000 }
+          );
+          const fallbackList = (fallbackRes.data?.results || [])
+            .filter(f => f.id !== showIdNum && !userExcludedShowIdsRef.current.has(f.id))
+            .sort((a, b) => calculateShowQualityScore(b) - calculateShowQualityScore(a));
+
+          for (const item of fallbackList) {
+            if (!seenShowIdsRef.current.has(item.id)) {
+              seenShowIdsRef.current.add(item.id);
+              combinedShows.push(item);
+            }
+          }
+        } catch (simErr) {
+          console.warn("Could not fetch TV similar fallback:", simErr?.message);
+        }
+      }
+
+      // MANDATORY YEAR REQUIREMENT:
+      // Partition strictly into post-2000 (>= 2000) and pre-2000 (< 2000).
+      // Post-2000 TV shows MUST appear first.
+      // Pre-2000 TV shows appear ONLY after all similar shows after 2000 have been loaded already.
+      const { post2000, pre2000 } = partitionAndSortByYear(
+        combinedShows,
+        activeTheme?.matchedThemeId,
+        activeShow?.original_language,
+        isHollywood
+      );
+
+      // Stash any discovered pre-2000 shows into the reservoir
+      for (const pre of pre2000) {
+        if (!pre2000ReservoirRef.current.some(item => item.id === pre.id)) {
+          pre2000ReservoirRef.current.push(pre);
+        }
+      }
+      pre2000ReservoirRef.current.sort((a, b) => calculateShowQualityScore(b) - calculateShowQualityScore(a));
+
+      // Enforce Hollywood filter strictly if the current show is Hollywood
+      let targetPost2000 = post2000;
+      if (isHollywood) {
+        const hwOnly = post2000.filter(s => s.original_language === 'en');
+        if (hwOnly.length >= 6) {
+          targetPost2000 = hwOnly;
+        }
+      }
+
+      let showsToDisplay = [];
+      if (!post2000ExhaustedRef.current) {
+        if (targetPost2000.length > 0) {
+          showsToDisplay = targetPost2000;
+        } else {
+          // Post-2000 shows have now been completely exhausted!
+          post2000ExhaustedRef.current = true;
+          // Only now begin releasing pre-2000 shows from the reservoir
+          showsToDisplay = pre2000ReservoirRef.current.splice(0, 18);
+        }
+      } else {
+        // Post-2000 already exhausted: release next batch of pre-2000 shows
+        showsToDisplay = pre2000ReservoirRef.current.splice(0, 18);
+      }
+
+      // Initial load fallback: if no post-2000 shows exist at all
+      if (reset && showsToDisplay.length === 0 && pre2000ReservoirRef.current.length > 0) {
+        post2000ExhaustedRef.current = true;
+        showsToDisplay = pre2000ReservoirRef.current.splice(0, 18);
+      }
+
+      if (reset) {
+        setSimilarShows(showsToDisplay);
+      } else {
+        setSimilarShows(prev => [...prev, ...showsToDisplay]);
+      }
+
+      setHasMoreSimilar(
+        (showsToDisplay.length > 0 || pre2000ReservoirRef.current.length > 0) && page < 20
+      );
       setSimilarPage(page);
     } catch (error) {
       console.error("Error fetching similar TV shows:", error);
@@ -268,6 +468,14 @@ const TvShowDetails = () => {
       return;
     }
     setWatchStatus(newStatus);
+    const showIdNum = Number(id);
+    if (['watched', 'inProgress', 'planToWatch'].includes(newStatus)) {
+      userExcludedShowIdsRef.current.add(showIdNum);
+      seenShowIdsRef.current.add(showIdNum);
+      setSimilarShows(prev => prev.filter(s => s.id !== showIdNum));
+    } else {
+      userExcludedShowIdsRef.current.delete(showIdNum);
+    }
     updateTvShowStatus(newStatus, rating);
   };
 
@@ -277,12 +485,8 @@ const TvShowDetails = () => {
       return;
     }
     setRating(newRating);
+    setHoverRating(0);
     updateTvShowStatus(watchStatus, newRating);
-  };
-
-  const getRatingEmoji = (currentRating) => {
-    const config = RATING_CONFIG.find(r => r.value === currentRating);
-    return config ? config.emoji : '🤔';
   };
 
   const getRatingColor = (currentRating) => {
@@ -294,7 +498,7 @@ const TvShowDetails = () => {
     navigate(`/tv/${showId}`);
   };
 
-  if (loading) return <p className="text-center mt-10 text-white">Loading...</p>;
+  if (loading) return <LoadingScreen message="Loading" />;
   if (!show) return <p className="text-center mt-10 text-red-500">TV show not found!</p>;
 
   return (
@@ -322,12 +526,12 @@ const TvShowDetails = () => {
             />
             <div className="md:ml-6 mt-4 md:mt-0 flex-1 w-full md:w-auto">
               <h1 className="text-3xl font-bold text-white">{show.name}</h1>
-              <p className="text-gray-300 mt-2">📅 {show.first_air_date}</p>
+              <p className="text-gray-300 mt-2">First Aired: {show.first_air_date}</p>
               <p className="mt-4 text-gray-200">{show.overview}</p>
-              <p className="mt-4 font-semibold text-white">⭐ Rating: {show.vote_average.toFixed(1)}/10</p>
-              <p className="mt-2 text-gray-300">🎭 Genres: {show.genres.map(g => g.name).join(", ")}</p>
-              <p className="mt-2 text-gray-300">📺 Seasons: {show.number_of_seasons}</p>
-              <p className="mt-2 text-gray-300">🎬 Episodes: {show.number_of_episodes}</p>
+              <p className="mt-4 font-semibold text-white">Rating: {show.vote_average.toFixed(1)}/10</p>
+              <p className="mt-2 text-gray-300">Genres: {show.genres.map(g => g.name).join(", ")}</p>
+              <p className="mt-2 text-gray-300">Seasons: {show.number_of_seasons}</p>
+              <p className="mt-2 text-gray-300">Episodes: {show.number_of_episodes}</p>
 
               {!isAuthenticated ? (
                 <div className="mt-6 p-4 backdrop-blur-md bg-blue-500/20 text-blue-200 rounded-lg border border-blue-400/30 w-full">
@@ -366,44 +570,60 @@ const TvShowDetails = () => {
                     </div>
                   </div>
 
-                  {/* Rating Buttons - Only show for watched or in progress */}
+                  {/* Interactive Star Rating - Only show for watched or in progress */}
                   {(watchStatus === WATCH_STATUS.COMPLETED || watchStatus === WATCH_STATUS.IN_PROGRESS) && (
                     <div className="mt-6 w-full">
-                      <h3 className="text-lg font-semibold mb-2 text-white">Your Rating</h3>
-                      <div className="flex w-full max-w-md flex-wrap">
-                        {RATING_CONFIG.map((config, index) => (
+                      <div className="flex items-center justify-between mb-2 max-w-md">
+                        <h3 className="text-lg font-semibold text-white">Your Rating</h3>
+                        {rating > 0 && (
                           <button
-                            key={config.value}
-                            onClick={() => handleRatingChange(config.value)}
-                            className={`
-                              flex-1 h-12 flex items-center justify-center
-                              transition-all duration-300 relative
-                              ${index === 0 ? 'rounded-l-lg' : ''}
-                              ${index === RATING_CONFIG.length - 1 ? 'rounded-r-lg' : ''}
-                              ${rating === config.value 
-                                ? `${config.color} text-white transform scale-y-105 z-10 shadow-md` 
-                                : 'backdrop-blur-md bg-white/10 text-white hover:bg-white/20 border border-white/20'
-                              }
-                              ${index > 0 ? '-ml-px' : ''}
-                            `}
+                            type="button"
+                            onClick={() => handleRatingChange(0)}
+                            className="text-xs text-gray-400 hover:text-red-400 transition-colors duration-150 underline decoration-dotted"
                           >
-                            <span className="text-2xl">{config.emoji}</span>
+                            Clear rating
                           </button>
-                        ))}
+                        )}
                       </div>
-                      <p className="mt-2 text-sm text-gray-300 flex items-center gap-2">
-                        {rating > 0 ? (
-                          <>
-                            <span>Your rating: {getRatingEmoji(rating)}</span>
-                            <span className={`
-                              px-2 py-1 rounded text-white text-xs
-                              ${getRatingColor(rating)}
-                            `}>
-                              {rating/2}/5
-                            </span>
-                          </>
-                        ) : "Not rated yet"}
-                      </p>
+                      <div className="flex items-center gap-1.5 p-3 rounded-xl bg-white/5 border border-white/10 max-w-md">
+                        {[1, 2, 3, 4, 5].map((star) => {
+                          const starValue = star * 2;
+                          const isFilled = (hoverRating || rating) >= starValue;
+                          return (
+                            <button
+                              key={star}
+                              type="button"
+                              onClick={() => handleRatingChange(rating === starValue ? 0 : starValue)}
+                              onMouseEnter={() => setHoverRating(starValue)}
+                              onMouseLeave={() => setHoverRating(0)}
+                              className="p-1 rounded-lg hover:bg-white/10 transition-transform duration-150 transform hover:scale-110 focus:outline-none"
+                              title={`${star}/5 Stars`}
+                            >
+                              <svg
+                                className={`w-7 h-7 transition-colors duration-150 ${
+                                  isFilled ? 'text-amber-400 fill-amber-400' : 'text-gray-600 fill-transparent'
+                                }`}
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                                strokeWidth="1.5"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z"
+                                />
+                              </svg>
+                            </button>
+                          );
+                        })}
+                        <div className="ml-auto flex items-center gap-2">
+                          <span className={`px-2.5 py-1 rounded-md text-xs font-semibold ${
+                            (hoverRating || rating) > 0 ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : 'bg-gray-800 text-gray-400'
+                          }`}>
+                            {(hoverRating || rating) > 0 ? `${(hoverRating || rating) / 2} / 5` : 'Not Rated'}
+                          </span>
+                        </div>
+                      </div>
                     </div>
                   )}
 
@@ -445,13 +665,15 @@ const TvShowDetails = () => {
       {similarShows.length > 0 && (
         <div className="w-full py-12">
           <div className="max-w-7xl mx-auto px-6">
-            <div className="mb-8 backdrop-blur-md bg-white/10 p-4 rounded-lg shadow-md w-[300px] mx-auto border border-white/20">
-              <h2 className="text-3xl font-bold text-center text-white">Similar Shows</h2>
+            <div className="mb-8 backdrop-blur-md bg-white/10 px-8 py-4 rounded-2xl shadow-xl w-fit max-w-xl mx-auto border border-white/20 text-center">
+              <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-wide">
+                You'll Also Like
+              </h2>
             </div>
-            <div className="grid grid-cols-4 gap-6">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 sm:gap-6">
               {similarShows.map(show => (
                 <div key={show.id} onClick={() => handleSimilarShowClick(show.id)}>
-                  <MovieCard movie={show} />
+                  <TvShowCard show={show} />
                 </div>
               ))}
             </div>

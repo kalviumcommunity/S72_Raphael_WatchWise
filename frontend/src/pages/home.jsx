@@ -48,6 +48,10 @@ const Home = () => {
     tvShows: {},
     anime: {}
   });
+
+  useEffect(() => {
+    document.title = "My Watchlists | WatchWise";
+  }, []);
   const Endpoint = "https://s72-raphael-watchwise.onrender.com";
   //http://localhost:3000
 
@@ -63,8 +67,8 @@ const Home = () => {
           }
         }),
         //https://s72-raphael-watchwise.onrender.com/api/profile/tvshows
-        //http://localhost:3000/apu/profile/tvshows
-        axios.get(`${Endpoint}/apu/profile/tvshows`, {
+        //http://localhost:3000/api/profile/tvshows
+        axios.get(`${Endpoint}/api/profile/tvshows`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -314,18 +318,26 @@ const Home = () => {
                     ? { 
                         movie: {
                           id: item.movieId,
+                          movieId: item.movieId,
                           title: item.movieTitle,
                           poster_path: item.posterPath,
-                          vote_average: item.rating || 0
+                          vote_average: item.vote_average || item.rating || 0,
+                          rating: item.rating,
+                          overview: item.overview,
+                          release_date: item.release_date || item.releaseDate
                         }
                       }
                     : type === 'tvShows'
                     ? {
                         show: {
                           id: item.showId,
+                          showId: item.showId,
                           name: item.showTitle,
                           poster_path: item.posterPath,
-                          vote_average: item.rating || 0
+                          vote_average: item.vote_average || item.rating || 0,
+                          rating: item.rating,
+                          overview: item.overview,
+                          first_air_date: item.first_air_date || item.firstAirDate
                         }
                       }
                     : {
@@ -370,8 +382,8 @@ const Home = () => {
       <div className="max-w-7xl mx-auto px-4 py-8 pt-24">
         {/* Hero Section with Title */}
         <div className="mb-8">
-          <h1 className="text-4xl font-bold text-white mb-2">My List</h1>
-          <p className="text-gray-400 text-lg">Track your favorite movies, TV shows, and anime</p>
+          <h1 className="text-4xl font-bold text-white mb-2">My Watchlists</h1>
+          <p className="text-gray-400 text-lg">Track and manage your watched, currently watching, and planned movies, TV shows, and anime</p>
         </div>
 
         {/* Stats Section */}
