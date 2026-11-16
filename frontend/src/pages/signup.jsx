@@ -38,7 +38,7 @@ function Signup({ setIsAuthenticated }) {
     // Auto-rotate background images
     useEffect(() => {
         if (backgroundMovies.length === 0) return;
-        
+
         const interval = setInterval(() => {
             setCurrentMovieIndex((prev) => (prev + 1) % backgroundMovies.length);
         }, 5000); // Change every 5 seconds
@@ -65,7 +65,7 @@ function Signup({ setIsAuthenticated }) {
                 email,
                 password
             });
-            
+
             if (response.data && response.data.token) {
                 localStorage.setItem('token', response.data.token);
                 localStorage.setItem('rememberMe', 'true');
@@ -91,9 +91,8 @@ function Signup({ setIsAuthenticated }) {
                 {backgroundMovies.map((movie, index) => (
                     <div
                         key={movie.id}
-                        className={`absolute inset-0 bg-cover bg-center transition-opacity duration-1000 ${
-                            index === currentMovieIndex ? 'opacity-100' : 'opacity-0'
-                        }`}
+                        className={`absolute inset-0 bg-cover bg-center transition-opacity duration-1000 ${index === currentMovieIndex ? 'opacity-100' : 'opacity-0'
+                            }`}
                         style={{
                             backgroundImage: `url(https://image.tmdb.org/t/p/original${movie.backdrop_path})`,
                         }}
@@ -111,11 +110,10 @@ function Signup({ setIsAuthenticated }) {
                         <button
                             key={index}
                             onClick={() => setCurrentMovieIndex(index)}
-                            className={`w-2 h-2 rounded-full transition-all duration-300 ${
-                                index === currentMovieIndex 
-                                    ? 'bg-blue-500 w-8' 
-                                    : 'bg-gray-500 hover:bg-gray-400'
-                            }`}
+                            className={`w-2 h-2 rounded-full transition-all duration-300 ${index === currentMovieIndex
+                                ? 'bg-blue-500 w-8'
+                                : 'bg-gray-500 hover:bg-gray-400'
+                                }`}
                         />
                     ))}
                 </div>
